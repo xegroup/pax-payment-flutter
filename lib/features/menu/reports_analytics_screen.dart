@@ -1,0 +1,481 @@
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
+import '../../shared/responsive/responsive.dart';
+import '../../shared/theme/paxpayment_colors.dart';
+import '../../shared/theme/paxpayment_spacing.dart';
+import 'data/dummy_payments_data.dart';
+
+enum _ReportRangePreset { last7, last30, thisMonth }
+
+/// Reports & analytics with charts.
+class ReportsAnalyticsScreen extends StatefulWidget {
+  const ReportsAnalyticsScreen({super.key});
+
+  @override
+  State<ReportsAnalyticsScreen> createState() => _ReportsAnalyticsScreenState();
+}
+
+class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
+  _ReportRangePreset _preset = _ReportRangePreset.last7;
+
+  static final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
+  static final _compact = NumberFormat('#,##0.00');
+  static final _axisDay = DateFormat('d MMM');
+
+  (DateTime, DateTime) get _range {
+    final now = DateTime.now();
+    final end = DateTime(now.year, now.month, now.day);
+    switch (_preset) {
+      case _ReportRangePreset.last7:
+        return (end.subtract(const Duration(days: 6)), end);
+      case _ReportRangePreset.last30:
+        return (end.subtract(const Duration(days: 29)), end);
+      case _ReportRangePreset.thisMonth:
+        return (DateTime(now.year, now.month, 1), end);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Responsive.of(context);
+    final pad = r.layout(
+      mobilePortrait: PaxPaymentSpacing.sp16,
+      mobileLandscape: PaxPaymentSpacing.sp16,
+      tabletPortrait: PaxPaymentSpacing.sp24,
+      tabletLandscape: PaxPaymentSpacing.sp24,
+    );
+
+    final (start, end) = _range;
+    final s = DummyPaymentsData.summary(start, end);
+    final daily = DummyPaymentsData.dailyBars(start, end);
+    final cumulative = DummyPaymentsData.cumulativeSeries(start, end);
+
+    final lineSpots = <FlSpot>[
+      for (var i = 0; i < cumulative.length; i++)
+        FlSpot(i.toDouble(), cumulative[i].$2),
+    ];
+    // When every day is £0, peak Y is 0 — fl_chart requires horizontalInterval != 0.
+    final peakLineY = lineSpots.isEmpty
+        ? 0.0
+        : lineSpots.map((e) => e.y).reduce((a, b) => a > b ? a : b);
+    final maxLineY = peakLineY <= 0 ? 1.0 : peakLineY * 1.08;
+
+    final maxBarRaw = daily.isEmpty
+        ? 0.0
+        : daily.map((e) => e.$2).reduce((a, b) => a > b ? a : b);
+    final maxBarY = maxBarRaw <= 0 ? 1.0 : maxBarRaw * 1.15;
+    final barGroups = <BarChartGroupData>[
+      for (var i = 0; i < daily.length; i++)
+        BarChartGroupData(
+          x: i,
+          barRods: [
+            BarChartRodData(
+              toY: daily[i].$2,
+              color: PaxPaymentColors.primaryBlue,
+              width: daily.length > 14 ? 6 : 10,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(6),
+              ),
+            ),
+          ],
+        ),
+    ];
+
+    return Scaffold(
+      backgroundColor: PaxPaymentColors.adminBackground,
+      appBar: AppBar(
+        title: const Text('Reports & analytics'),
+        backgroundColor: PaxPaymentColors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: PaxPaymentColors.darkGrayText,
+      ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(
+          pad,
+          PaxPaymentSpacing.sp16,
+          pad,
+          pad + MediaQuery.paddingOf(context).bottom + 24,
+        ),
+        children: [
+          Text(
+            'Date range',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: PaxPaymentColors.mediumGray,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp8),
+          Wrap(
+            spacing: PaxPaymentSpacing.sp8,
+            runSpacing: PaxPaymentSpacing.sp8,
+            children: [
+              _RangeChip(
+                label: 'Last 7 days',
+                selected: _preset == _ReportRangePreset.last7,
+                onTap: () =>
+                    setState(() => _preset = _ReportRangePreset.last7),
+              ),
+              _RangeChip(
+                label: 'Last 30 days',
+                selected: _preset == _ReportRangePreset.last30,
+                onTap: () =>
+                    setState(() => _preset = _ReportRangePreset.last30),
+              ),
+              _RangeChip(
+                label: 'This month',
+                selected: _preset == _ReportRangePreset.thisMonth,
+                onTap: () =>
+                    setState(() => _preset = _ReportRangePreset.thisMonth),
+              ),
+            ],
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp8),
+          Text(
+            '${_axisDay.format(start)} – ${_axisDay.format(end)}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: PaxPaymentColors.mediumGray,
+                ),
+          ),
+          SizedBox(height: r.value(mobile: PaxPaymentSpacing.sp20, tablet: PaxPaymentSpacing.sp24)),
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryCard(
+                  label: 'Total sales',
+                  value: _money.format(s.total),
+                  sub: '${s.count} successful txns',
+                ),
+              ),
+              const SizedBox(width: PaxPaymentSpacing.sp12),
+              Expanded(
+                child: _SummaryCard(
+                  label: 'Avg transaction',
+                  value: _money.format(s.avg),
+                  sub: 'Per successful payment',
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: r.value(mobile: PaxPaymentSpacing.sp20, tablet: PaxPaymentSpacing.sp24)),
+          _ChartCard(
+            title: 'Sales trend',
+            subtitle: 'Cumulative net volume',
+            child: lineSpots.length < 2
+                ? SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: Text(
+                        'Not enough data in this range.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: PaxPaymentColors.mediumGray,
+                            ),
+                      ),
+                    ),
+                  )
+                : SizedBox(
+                    height: 220,
+                    child: LineChart(
+                      LineChartData(
+                        minX: 0,
+                        maxX: (lineSpots.length - 1).toDouble(),
+                        minY: 0,
+                        maxY: maxLineY,
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          horizontalInterval: (maxLineY / 4).clamp(0.25, double.infinity),
+                          getDrawingHorizontalLine: (v) => FlLine(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            strokeWidth: 1,
+                          ),
+                        ),
+                        borderData: FlBorderData(show: false),
+                        titlesData: FlTitlesData(
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 44,
+                              interval: (maxLineY / 4).clamp(0.25, double.infinity),
+                              getTitlesWidget: (v, m) => Text(
+                                '£${_compact.format(v)}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: PaxPaymentColors.mediumGray,
+                                ),
+                              ),
+                            ),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: lineSpots.length > 8 ? 2 : 1,
+                              getTitlesWidget: (v, m) {
+                                final i = v.round();
+                                if (i < 0 || i >= cumulative.length) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    _axisDay.format(cumulative[i].$1),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: PaxPaymentColors.mediumGray,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        lineBarsData: [
+                          LineChartBarData(
+                            spots: lineSpots,
+                            isCurved: true,
+                            color: PaxPaymentColors.primaryBlue,
+                            barWidth: 3,
+                            dotData: const FlDotData(show: false),
+                            belowBarData: BarAreaData(
+                              show: true,
+                              color: PaxPaymentColors.primaryBlue
+                                  .withValues(alpha: 0.12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp16),
+          _ChartCard(
+            title: 'Daily revenue',
+            subtitle: 'Net volume per day',
+            child: barGroups.isEmpty
+                ? SizedBox(
+                    height: 200,
+                    child: Center(
+                      child: Text(
+                        'No data.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: PaxPaymentColors.mediumGray,
+                            ),
+                      ),
+                    ),
+                  )
+                : SizedBox(
+                    height: 240,
+                    child: BarChart(
+                      BarChartData(
+                        alignment: BarChartAlignment.spaceAround,
+                        maxY: maxBarY,
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          horizontalInterval: (maxBarY / 4).clamp(0.25, double.infinity),
+                          getDrawingHorizontalLine: (v) => FlLine(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            strokeWidth: 1,
+                          ),
+                        ),
+                        borderData: FlBorderData(show: false),
+                        titlesData: FlTitlesData(
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          leftTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 44,
+                              interval: (maxBarY / 4).clamp(0.25, double.infinity),
+                              getTitlesWidget: (v, m) => Text(
+                                '£${_compact.format(v)}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: PaxPaymentColors.mediumGray,
+                                ),
+                              ),
+                            ),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              interval: daily.length > 12 ? 3 : 1,
+                              getTitlesWidget: (v, m) {
+                                final i = v.toInt();
+                                if (i < 0 || i >= daily.length) {
+                                  return const SizedBox.shrink();
+                                }
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Text(
+                                    _axisDay.format(daily[i].$1),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: PaxPaymentColors.mediumGray,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        barGroups: barGroups,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RangeChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _RangeChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? PaxPaymentColors.primaryBlue.withValues(alpha: 0.12)
+          : PaxPaymentColors.white,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: PaxPaymentSpacing.sp16,
+            vertical: PaxPaymentSpacing.sp10,
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: selected
+                      ? PaxPaymentColors.primaryBlue
+                      : PaxPaymentColors.darkGrayText,
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final String sub;
+
+  const _SummaryCard({
+    required this.label,
+    required this.value,
+    required this.sub,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(PaxPaymentSpacing.sp16),
+      decoration: BoxDecoration(
+        color: PaxPaymentColors.white,
+        borderRadius: BorderRadius.circular(PaxPaymentSpacing.radiusXl),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: PaxPaymentColors.mediumGray,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp8),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: PaxPaymentColors.darkGrayText,
+                ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp4),
+          Text(
+            sub,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: PaxPaymentColors.mediumGray,
+                  height: 1.3,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final Widget child;
+
+  const _ChartCard({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(PaxPaymentSpacing.sp16),
+      decoration: BoxDecoration(
+        color: PaxPaymentColors.white,
+        borderRadius: BorderRadius.circular(PaxPaymentSpacing.radiusXl),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: PaxPaymentColors.darkGrayText,
+                ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp4),
+          Text(
+            subtitle,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: PaxPaymentColors.mediumGray,
+                ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp12),
+          child,
+        ],
+      ),
+    );
+  }
+}
