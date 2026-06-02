@@ -7,4 +7,9 @@ class PaxDeviceChannel {
   static Future<void> openWifiSettings() async {
     await _channel.invokeMethod<void>('openWifiSettings');
   }
+
+  /// Sends plain text to the device printer when native support exists.
+  static Future<void> printText(String text) async {
+    await _channel.invokeMethod<void>('printText', <String, dynamic>{'text': text});
+  }
 }

@@ -69,11 +69,7 @@ class _HomeTabState extends State<HomeTab> with RouteAware {
 
   void _onAction(BuildContext context, String label) {
     if (label == 'Take Payment') {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const CheckoutPaymentScreen(),
-        ),
-      );
+      Navigator.of(context).push(CheckoutPaymentScreen.materialRoute());
       return;
     }
     if (label == 'View Transactions') {
@@ -94,10 +90,8 @@ class _HomeTabState extends State<HomeTab> with RouteAware {
     }
     if (label == 'Send Payment Link') {
       Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => const CheckoutPaymentScreen(
-            initialMethod: CheckoutPaymentMethod.paymentLink,
-          ),
+        CheckoutPaymentScreen.materialRoute(
+          initialMethod: CheckoutPaymentMethod.paymentLink,
         ),
       );
       return;

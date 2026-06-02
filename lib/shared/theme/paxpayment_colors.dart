@@ -40,8 +40,11 @@ class PaxPaymentColors {
   static const Color orderingSideBg = PaxColors.grey150;
   static const Color orderingLine = PaxColors.grey400;
 
-  /// XePOS / handheld keypay accent (yellow cursor, borders, brand mark).
-  static const Color posKeypayAccent = Color(0xFFFFD400);
+  /// Brand accent for keypay cursor, borders, charge CTA, and logo mark.
+  static const Color posKeypayAccent = PaxColors.teal500;
+
+  /// Text/icons on [posKeypayAccent] surfaces.
+  static const Color onPosKeypayAccent = PaxColors.white;
 
   static const Color background = PaxColors.grey950;
   static const Color surfaceSolid = PaxColors.grey900;

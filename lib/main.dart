@@ -1,25 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app_route_observer.dart';
+import 'core/config/app_flags.dart';
 import 'core/di/injection.dart';
 import 'features/auth/splash_screen.dart';
 import 'features/menu/data/dummy_payments_data.dart';
 import 'shared/theme/theme_service.dart';
 import 'shared/utils/localization_service.dart';
 
-late final ThemeService appThemeService;
-late final LocalizationService appLocalizationService;
+ThemeService? _appThemeService;
+ThemeService get appThemeService => _appThemeService!;
+
+LocalizationService? _appLocalizationService;
+LocalizationService get appLocalizationService => _appLocalizationService!;
 
 Future<void> initializeApp() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await GetIt.I.reset();
+  if (isMobilePlatform && !isRunningTests) {
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  }
+  if (GetIt.I.isRegistered<SharedPreferences>()) {
+    await GetIt.I.reset(dispose: false);
+  }
   await setupDependencies();
   final prefs = sl<SharedPreferences>();
-  appThemeService = ThemeService(prefs: prefs);
-  appLocalizationService = LocalizationService(prefs: prefs);
+  if (isRunningTests) {
+    _appThemeService = ThemeService(prefs: prefs);
+    _appLocalizationService = LocalizationService(prefs: prefs);
+  } else {
+    _appThemeService ??= ThemeService(prefs: prefs);
+    _appLocalizationService ??= LocalizationService(prefs: prefs);
+  }
   await DummyPaymentsData.initialize();
 }
 

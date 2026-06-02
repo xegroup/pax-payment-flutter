@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'pax_colors.dart';
 import 'pax_font_sizes.dart';
@@ -35,7 +34,5 @@ TextTheme buildPaxColoredTextTheme({required bool isLight}) {
 }
 
 TextTheme buildPaxTextTheme({required bool isLight}) {
-  return GoogleFonts.dmSansTextTheme(
-    buildPaxColoredTextTheme(isLight: isLight),
-  );
+  return buildPaxColoredTextTheme(isLight: isLight);
 }

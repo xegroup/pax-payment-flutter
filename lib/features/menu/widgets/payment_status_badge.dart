@@ -14,12 +14,14 @@ class PaymentStatusBadge extends StatelessWidget {
     required this.status,
     this.compact = false,
     this.isRefund = false,
+    this.isRefunded = false,
     this.size,
   });
 
   final PaymentStatus status;
   final bool compact;
   final bool isRefund;
+  final bool isRefunded;
   final PaymentBadgeSize? size;
 
   @override
@@ -82,7 +84,7 @@ class PaymentStatusBadge extends StatelessWidget {
       PaymentBadgeSize.lg => PaxSpacing.xs,
     };
 
-    if (isRefund) {
+    if (isRefund || isRefunded || status == PaymentStatus.refunded) {
       return _BadgeVisual(
         label: 'Refunded',
         icon: Icons.undo_rounded,

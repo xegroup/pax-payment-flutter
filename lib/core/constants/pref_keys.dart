@@ -1,6 +1,7 @@
 /// Centralized SharedPreferences keys for Pax Payment.
 abstract final class PrefKeys {
   static const String isLoggedIn = 'pref_is_logged_in';
+  static const String credentialsConfigured = 'pref_credentials_configured';
   static const String loginUsername = 'pref_login_username';
   static const String loginPassword = 'pref_login_password';
   static const String managerPin = 'pref_manager_pin';

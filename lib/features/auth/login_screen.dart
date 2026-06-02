@@ -35,7 +35,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final storage = sl<LocalStorage>();
     final userOk = _emailOrPhoneController.text.trim() == storage.loginUsername;
-    final passOk = _passwordController.text.trim() == storage.loginPassword;
+    final passOk = await storage.verifyLoginPassword(
+      _passwordController.text.trim(),
+    );
     if (!userOk || !passOk) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -49,11 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     await storage.setLoggedIn(true);
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => const CheckoutPaymentScreen(),
-      ),
-    );
+    Navigator.of(context).pushReplacement(CheckoutPaymentScreen.materialRoute());
   }
 
   void _onForgotPassword() {

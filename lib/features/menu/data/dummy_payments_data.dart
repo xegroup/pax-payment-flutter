@@ -60,6 +60,34 @@ class DummyPaymentsData {
     await _persist();
   }
 
+  static PaymentTransaction? findById(String id) {
+    for (final t in all) {
+      if (t.id == id) return t;
+    }
+    return null;
+  }
+
+  /// Marks the original sale as refunded after a successful refund row is added.
+  static Future<void> markTransactionRefunded(String originalId) async {
+    if (!_initialized) await initialize();
+    final index = all.indexWhere((t) => t.id == originalId);
+    if (index < 0) return;
+    all[index] = all[index].copyWith(
+      status: PaymentStatus.refunded,
+      isRefunded: true,
+      refundSupported: false,
+    );
+    await _persist();
+  }
+
+  static Future<void> updateTransaction(PaymentTransaction updated) async {
+    if (!_initialized) await initialize();
+    final index = all.indexWhere((t) => t.id == updated.id);
+    if (index < 0) return;
+    all[index] = updated;
+    await _persist();
+  }
+
   static Future<void> clearAll() async {
     if (!_initialized) {
       await initialize();
@@ -79,7 +107,13 @@ class DummyPaymentsData {
       case PaymentsStatusFilter.all:
         break;
       case PaymentsStatusFilter.success:
-        list = list.where((e) => e.status == PaymentStatus.success).toList();
+        list = list
+            .where(
+              (e) =>
+                  e.status == PaymentStatus.success ||
+                  e.status == PaymentStatus.refunded,
+            )
+            .toList();
       case PaymentsStatusFilter.failed:
         list = list.where((e) => e.status == PaymentStatus.failed).toList();
     }

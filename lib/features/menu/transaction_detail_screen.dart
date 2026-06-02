@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/security/manager_pin_gate.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import '../../core/services/payment_service.dart';
@@ -29,8 +30,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final t = widget.transaction;
-    final canRefund =
-        !t.isRefund && t.refundSupported && t.status == PaymentStatus.success;
+    final canRefund = !t.isRefund &&
+        !t.isRefunded &&
+        t.refundSupported &&
+        t.status == PaymentStatus.success;
     final amountText = _money.format(t.amount.abs());
 
     return Scaffold(
@@ -165,6 +168,11 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
       ),
     );
     if (ok != true || !mounted) return;
+    final pinOk = await verifyManagerPin(
+      context,
+      reason: 'Manager PIN is required to process a refund.',
+    );
+    if (!pinOk || !mounted) return;
     await _runRefund();
   }
 
@@ -201,6 +209,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           originalTransactionId: widget.transaction.id,
         );
         await DummyPaymentsData.addTransaction(refund);
+        await DummyPaymentsData.markTransactionRefunded(widget.transaction.id);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

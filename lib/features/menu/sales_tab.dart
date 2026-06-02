@@ -308,11 +308,7 @@ class _SalesTabState extends State<SalesTab> {
             title: 'Sell',
             icon: Icons.point_of_sale_outlined,
             onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const CheckoutPaymentScreen(),
-                ),
-              );
+              Navigator.of(context).push(CheckoutPaymentScreen.materialRoute());
             },
           ),
         ),

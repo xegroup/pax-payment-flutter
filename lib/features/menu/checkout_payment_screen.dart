@@ -6,6 +6,10 @@ import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
+import '../../screens/payment_method_screen.dart';
+import '../../screens/split_payment_flow.dart';
+import '../../screens/tip_screen.dart';
+import '../../shared/widgets/pax_pos_app_bar.dart';
 import '../../shared/widgets/pos_keypay_panel.dart';
 import '../../core/services/payment_service.dart';
 import 'data/dummy_payments_data.dart';
@@ -21,13 +25,33 @@ enum CheckoutPaymentMethod {
   cash,
 }
 
-enum _BillFlowStep { amount, splitChoice, equalSplit, customSplit, tip, summary }
+enum _BillFlowStep {
+  amount,
+  cardPresent,
+  splitChoice,
+  equalSplit,
+  customSplit,
+  tip,
+  summary,
+}
+
 enum _SplitMode { full, equal, custom }
 
 class CheckoutPaymentScreen extends StatefulWidget {
+  static const routeName = 'checkout_payment';
+
   final CheckoutPaymentMethod? initialMethod;
 
   const CheckoutPaymentScreen({super.key, this.initialMethod});
+
+  static MaterialPageRoute<void> materialRoute({
+    CheckoutPaymentMethod? initialMethod,
+  }) {
+    return MaterialPageRoute<void>(
+      settings: const RouteSettings(name: routeName),
+      builder: (_) => CheckoutPaymentScreen(initialMethod: initialMethod),
+    );
+  }
 
   @override
   State<CheckoutPaymentScreen> createState() => _CheckoutPaymentScreenState();
@@ -44,6 +68,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   _BillFlowStep _step = _BillFlowStep.amount;
 
   double _billAmount = 0;
+
   /// Minor units entered on the handheld keypay (e.g. "1569" → £15.69).
   String _amountKeypadRaw = '';
   _SplitMode _splitMode = _SplitMode.full;
@@ -57,7 +82,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   void initState() {
     super.initState();
     _method = widget.initialMethod ?? CheckoutPaymentMethod.cardTap;
-    if (!sl<LocalStorage>().cashEnabled && _method == CheckoutPaymentMethod.cash) {
+    if (!sl<LocalStorage>().cashEnabled &&
+        _method == CheckoutPaymentMethod.cash) {
       _method = CheckoutPaymentMethod.cardTap;
     }
   }
@@ -82,20 +108,22 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   @override
   Widget build(BuildContext context) {
     final isAmount = _step == _BillFlowStep.amount;
+    final isCardPresent = _step == _BillFlowStep.cardPresent;
     return Scaffold(
-      backgroundColor:
-          isAmount ? PaxPaymentColors.white : PaxPaymentColors.adminBackground,
-      appBar: _buildCheckoutAppBar(context),
+      backgroundColor: isAmount || isCardPresent
+          ? PaxPaymentColors.white
+          : PaxPaymentColors.adminBackground,
+      appBar: isCardPresent ? null : _buildCheckoutAppBar(context),
       body: Stack(
         children: [
           if (isAmount)
             _buildAmountStepLayout(context)
+          else if (isCardPresent)
+            _buildCardPresentStep(context)
           else
             ListView(
               padding: const EdgeInsets.all(PaxPaymentSpacing.sp16),
-              children: [
-                _buildFlowBody(context),
-              ],
+              children: [_buildFlowBody(context)],
             ),
           if (_isProcessing)
             ColoredBox(
@@ -112,56 +140,33 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   }
 
   PreferredSizeWidget _buildCheckoutAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: PaxPaymentColors.white,
-      surfaceTintColor: Colors.transparent,
-      elevation: 0,
-      foregroundColor: PaxPaymentColors.darkGrayText,
-      automaticallyImplyLeading: false,
-      titleSpacing: PaxPaymentSpacing.sp12,
-      title: Row(
-        children: [
-          const _CheckoutBrandMark(),
-          const SizedBox(width: PaxPaymentSpacing.sp10),
-          Expanded(
-            child: Text(
-              'POSLink Testing - XePOS',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: PaxPaymentColors.darkGrayText,
-                    fontWeight: FontWeight.w600,
-                  ),
-              overflow: TextOverflow.ellipsis,
+    final isAmount = _step == _BillFlowStep.amount;
+    return PaxPosAppBar(
+      onGoBack: isAmount
+          ? () => Navigator.of(context).maybePop()
+          : null,
+      onMenu: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const TerminalMenuScreen(),
+          ),
+        );
+      },
+      trailing: [
+        if (isAmount)
+          PopupMenuButton<CheckoutPaymentMethod>(
+            tooltip: 'Payment method',
+            icon: Icon(
+              Icons.payments_outlined,
+              color: PaxPaymentColors.darkGrayText.withValues(alpha: 0.85),
             ),
+            onSelected: (m) => setState(() => _method = m),
+            itemBuilder: (ctx) => _paymentMethodsForUi()
+                .map(
+                  (m) => PopupMenuItem(value: m, child: Text(_methodLabel(m))),
+                )
+                .toList(),
           ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const TerminalMenuScreen(),
-              ),
-            );
-          },
-          style: TextButton.styleFrom(
-            foregroundColor: PaxPaymentColors.darkGrayText,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Menu',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(width: PaxPaymentSpacing.sp8),
-              const _MenuGridIcon(),
-            ],
-          ),
-        ),
-        const SizedBox(width: PaxPaymentSpacing.sp4),
       ],
     );
   }
@@ -169,6 +174,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   Widget _buildFlowBody(BuildContext context) {
     return switch (_step) {
       _BillFlowStep.amount => const SizedBox.shrink(),
+      _BillFlowStep.cardPresent => const SizedBox.shrink(),
       _BillFlowStep.splitChoice => _splitChoiceStep(context),
       _BillFlowStep.equalSplit => _equalSplitStep(context),
       _BillFlowStep.customSplit => _customSplitStep(context),
@@ -191,9 +197,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   Widget _buildAmountStepLayout(BuildContext context) {
     final bottom = MediaQuery.paddingOf(context).bottom;
     final amountStyle = Theme.of(context).textTheme.displayMedium?.copyWith(
-          color: PaxPaymentColors.darkGrayText,
-          fontWeight: FontWeight.w600,
-        );
+      color: PaxPaymentColors.darkGrayText,
+      fontWeight: FontWeight.w600,
+    );
     final cursorH = (amountStyle?.fontSize ?? 40) * 1.05;
 
     return Column(
@@ -214,63 +220,190 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
             ),
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: PaxPaymentSpacing.sp16),
+          child: TextButton(
+            onPressed: _onSplitBillPressed,
+            child: Text(
+              'Split bill',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: PaxPaymentColors.primaryBlue,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
+        ),
         Expanded(
           flex: 5,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: PaxPaymentSpacing.sp16,
+            padding: EdgeInsets.fromLTRB(
+              PaxPaymentSpacing.sp16,
+              0,
+              PaxPaymentSpacing.sp16,
+              PaxPaymentSpacing.sp12 + bottom,
             ),
             child: PosKeypayPanel(
               onDigit: _onAmountDigit,
               onDelete: _onAmountDelete,
               onClear: _onAmountClear,
               onOperatorTap: (_) {},
-            ),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            PaxPaymentSpacing.sp16,
-            PaxPaymentSpacing.sp8,
-            PaxPaymentSpacing.sp16,
-            PaxPaymentSpacing.sp16 + bottom,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _paymentMethodsForUi().map((method) {
-                    return Padding(
-                      padding:
-                          const EdgeInsets.only(right: PaxPaymentSpacing.sp8),
-                      child: ChoiceChip(
-                        label: Text(_methodLabel(method)),
-                        selected: _method == method,
-                        selectedColor: PaxPaymentColors.posKeypayAccent
-                            .withValues(alpha: 0.35),
-                        onSelected: (_) => setState(() => _method = method),
+              footer: Material(
+                color: PaxPaymentColors.posKeypayAccent,
+                child: InkWell(
+                  onTap: _onChargePressed,
+                  child: SizedBox(
+                    height: 52,
+                    child: Center(
+                      child: Text(
+                        'Charge',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: PaxPaymentColors.onPosKeypayAccent,
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
-                    );
-                  }).toList(),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: PaxPaymentSpacing.sp14),
-              FilledButton(
-                onPressed: _confirmAmount,
-                child: const Text('Confirm'),
-              ),
-            ],
+            ),
           ),
         ),
       ],
     );
   }
 
+  Widget _buildCardPresentStep(BuildContext context) {
+    final pad = MediaQuery.paddingOf(context);
+    final amountStyle = Theme.of(context).textTheme.displayMedium?.copyWith(
+      color: PaxPaymentColors.darkGrayText,
+      fontWeight: FontWeight.w700,
+    );
+
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+              PaxPaymentSpacing.sp16,
+              PaxPaymentSpacing.sp8,
+              PaxPaymentSpacing.sp16,
+              PaxPaymentSpacing.sp12,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(4, (i) {
+                final active = i == 0;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: PaxPaymentSpacing.sp6,
+                  ),
+                  child: Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: active
+                          ? PaxPaymentColors.textGreen
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: active
+                            ? PaxPaymentColors.textGreen
+                            : PaxPaymentColors.mediumGray.withValues(
+                                alpha: 0.45,
+                              ),
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: PaxPaymentSpacing.sp16,
+            ),
+            child: Row(
+              children: [
+                PaxPosBackButton(
+                  onPressed: () => setState(() => _step = _BillFlowStep.amount),
+                ),
+                const Spacer(),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'English',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: PaxPaymentColors.darkGrayText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: PaxPaymentSpacing.sp8),
+                    const Text('🇬🇧', style: TextStyle(fontSize: 22)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: PaxPaymentSpacing.sp24,
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    splashColor: Colors.transparent,
+                    highlightColor: Colors.transparent,
+                    onTap: _advanceFromCardPresent,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.contactless_rounded,
+                          size: 72,
+                          color: PaxPaymentColors.primaryBlue,
+                        ),
+                        const SizedBox(height: PaxPaymentSpacing.sp24),
+                        Text(
+                          _money.format(_to2(_billAmount)),
+                          style: amountStyle,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: PaxPaymentSpacing.sp16),
+                        Text(
+                          'Tap, insert, or swipe',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: PaxPaymentColors.mediumGray,
+                                fontWeight: FontWeight.w400,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: pad.bottom),
+        ],
+      ),
+    );
+  }
+
+  void _advanceFromCardPresent() {
+    setState(() => _step = _BillFlowStep.splitChoice);
+  }
+
   void _onAmountDigit(String d) {
-    if (_amountKeypadRaw.length >= 8) return;
+    final addLen = d.length;
+    if (_amountKeypadRaw.length + addLen > 8) return;
     HapticFeedback.selectionClick();
     setState(() => _amountKeypadRaw += d);
   }
@@ -278,8 +411,10 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   void _onAmountDelete() {
     if (_amountKeypadRaw.isEmpty) return;
     setState(() {
-      _amountKeypadRaw =
-          _amountKeypadRaw.substring(0, _amountKeypadRaw.length - 1);
+      _amountKeypadRaw = _amountKeypadRaw.substring(
+        0,
+        _amountKeypadRaw.length - 1,
+      );
     });
   }
 
@@ -287,21 +422,66 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     setState(() => _amountKeypadRaw = '');
   }
 
-  void _confirmAmount() {
+  void _onSplitBillPressed() {
     final parsed = _keypayAmount;
     if (parsed <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Enter a valid bill amount'),
+          content: Text('Please enter an amount'),
           behavior: SnackBarBehavior.floating,
         ),
       );
       return;
     }
     setState(() {
-      _billAmount = parsed;
+      _billAmount = _to2(parsed);
       _step = _BillFlowStep.splitChoice;
     });
+  }
+
+  Future<void> _launchSplitTeyaFlow() async {
+    if (_basePayments.isEmpty) return;
+    final ok = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
+        builder: (_) => SplitPaymentFlowScreen(amounts: _basePayments),
+      ),
+    );
+    if (!mounted) return;
+    if (ok == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All split payments completed'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    _restartFlow();
+  }
+
+  void _onChargePressed() {
+    final parsed = _keypayAmount;
+    if (parsed <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter an amount'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (sl<LocalStorage>().tipsEnabled) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => TipScreen(baseAmount: parsed),
+        ),
+      );
+    } else {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PaymentMethodScreen(totalAmount: parsed),
+        ),
+      );
+    }
   }
 
   Widget _splitChoiceStep(BuildContext context) {
@@ -314,9 +494,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
             _money.format(_billAmount),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: PaxPaymentColors.darkGrayText,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp16),
           OutlinedButton(
@@ -327,8 +507,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
                 _currentPaymentIndex = 0;
                 _selectedTip = 0;
                 _transactions.clear();
-                _step = _BillFlowStep.tip;
               });
+              _launchSplitTeyaFlow();
             },
             child: const Text('Pay in full'),
           ),
@@ -361,27 +541,27 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
             '$_splitCount payments of',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: PaxPaymentColors.mediumGray,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: PaxPaymentColors.mediumGray,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp6),
           Text(
             _money.format(_to2(per)),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: PaxPaymentColors.darkGrayText,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp18),
           Text(
             'Number of payments',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: PaxPaymentColors.darkGrayText,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
           Row(
@@ -397,9 +577,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               Text(
                 '$_splitCount',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: PaxPaymentColors.darkGrayText,
-                    ),
+                  fontWeight: FontWeight.w700,
+                  color: PaxPaymentColors.darkGrayText,
+                ),
               ),
               const SizedBox(width: PaxPaymentSpacing.sp12),
               IconButton.outlined(
@@ -439,8 +619,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
       _transactions.clear();
       _currentPaymentIndex = 0;
       _selectedTip = 0;
-      _step = _BillFlowStep.tip;
     });
+    _launchSplitTeyaFlow();
   }
 
   void _openCustomSplit() {
@@ -474,9 +654,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
             'Bill ${_money.format(_billAmount)}',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: PaxPaymentColors.darkGrayText,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp12),
           ...List.generate(_customSplitCtrls.length, (index) {
@@ -484,7 +664,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               padding: const EdgeInsets.only(bottom: PaxPaymentSpacing.sp10),
               child: TextField(
                 controller: _customSplitCtrls[index],
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
                   labelText: 'Payment ${index + 1}',
                   prefixText: '£ ',
@@ -501,7 +683,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               ),
               const SizedBox(width: PaxPaymentSpacing.sp8),
               TextButton.icon(
-                onPressed: _customSplitCtrls.length > 2 ? _removeSplitRow : null,
+                onPressed: _customSplitCtrls.length > 2
+                    ? _removeSplitRow
+                    : null,
                 icon: const Icon(Icons.remove_rounded),
                 label: const Text('Remove'),
               ),
@@ -512,14 +696,14 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
             difference == 0
                 ? 'Total matched'
                 : difference > 0
-                    ? 'Remaining: ${_money.format(difference)}'
-                    : 'Over by: ${_money.format(-difference)}',
+                ? 'Remaining: ${_money.format(difference)}'
+                : 'Over by: ${_money.format(-difference)}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: difference == 0
-                      ? PaxPaymentColors.textGreen
-                      : PaxPaymentColors.errorRed,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: difference == 0
+                  ? PaxPaymentColors.textGreen
+                  : PaxPaymentColors.errorRed,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp14),
           FilledButton(
@@ -575,8 +759,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
       _transactions.clear();
       _currentPaymentIndex = 0;
       _selectedTip = 0;
-      _step = _BillFlowStep.tip;
     });
+    _launchSplitTeyaFlow();
   }
 
   Widget _tipStep(BuildContext context) {
@@ -596,9 +780,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
             _money.format(baseAmount),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                  color: PaxPaymentColors.darkGrayText,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp8),
           if (tipsOn) ...[
@@ -606,9 +790,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               'Would you like to add a tip?',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: PaxPaymentColors.darkGrayText,
-                    fontWeight: FontWeight.w600,
-                  ),
+                color: PaxPaymentColors.darkGrayText,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: PaxPaymentSpacing.sp12),
             OutlinedButton(
@@ -641,8 +825,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               'Tips are turned off in Payment settings.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: PaxPaymentColors.mediumGray,
-                  ),
+                color: PaxPaymentColors.mediumGray,
+              ),
             ),
             const SizedBox(height: PaxPaymentSpacing.sp14),
           ],
@@ -656,9 +840,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               'To charge: ${_money.format(totalWithTip)}',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: PaxPaymentColors.darkGrayText,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: PaxPaymentColors.darkGrayText,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp14),
@@ -715,7 +899,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     final base = _basePayments[_currentPaymentIndex];
     final chargeAmount = _to2(base + _selectedTip);
     final storeTag = sl<LocalStorage>().currentStore;
-    final paymentMethod = _method == CheckoutPaymentMethod.cash ? 'cash' : 'card';
+    final paymentMethod = _method == CheckoutPaymentMethod.cash
+        ? 'cash'
+        : 'card';
 
     setState(() => _isProcessing = true);
     PaymentTransaction? tx;
@@ -729,7 +915,11 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
 
       final statusValue = (result['status'] ?? '').toString().toLowerCase();
       final status = switch (statusValue) {
-        'success' || 'approved' || 'ok' || 'completed' || 'true' => PaymentStatus.success,
+        'success' ||
+        'approved' ||
+        'ok' ||
+        'completed' ||
+        'true' => PaymentStatus.success,
         'cancelled' => null,
         _ => PaymentStatus.failed,
       };
@@ -747,7 +937,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
         // TODO(EVO): Confirm native `transactionId` mapping if EVO returns multiple reference fields.
         final synthId =
             'TXN-${DateTime.now().millisecondsSinceEpoch}-${_currentPaymentIndex + 1}';
-        final id = (nativeId != null && nativeId.isNotEmpty) ? nativeId : synthId;
+        final id = (nativeId != null && nativeId.isNotEmpty)
+            ? nativeId
+            : synthId;
         final last4 = _extractLast4(result['cardNumber']);
         final evoRef = nativeId?.isNotEmpty == true ? nativeId : null;
 
@@ -760,7 +952,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               ? 'Split #${_currentPaymentIndex + 1}'
               : 'Walk-in Customer',
           cardType: _methodLabel(_method),
-          refundSupported: status == PaymentStatus.success && _supportsRefund(_method),
+          refundSupported:
+              status == PaymentStatus.success && _supportsRefund(_method),
           cardLast4: last4,
           evoTransactionRef: evoRef,
           storeTag: storeTag,
@@ -841,51 +1034,55 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Icon(
-            allSuccess ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+            allSuccess
+                ? Icons.check_circle_rounded
+                : Icons.warning_amber_rounded,
             size: 42,
-            color: allSuccess ? PaxPaymentColors.textGreen : PaxPaymentColors.errorRed,
+            color: allSuccess
+                ? PaxPaymentColors.textGreen
+                : PaxPaymentColors.errorRed,
           ),
           const SizedBox(height: PaxPaymentSpacing.sp8),
           Text(
             allSuccess ? 'All payments completed' : 'Some payments failed',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: PaxPaymentColors.darkGrayText,
-                  fontWeight: FontWeight.w800,
-                ),
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp12),
           Text(
             'Original bill: ${_money.format(_billAmount)}',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: PaxPaymentColors.mediumGray,
-                ),
+              color: PaxPaymentColors.mediumGray,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp2),
           Text(
             'Mode: ${_splitModeLabel(_splitMode)}',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: PaxPaymentColors.mediumGray,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: PaxPaymentColors.mediumGray),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp4),
           Text(
             'Charged total: ${_money.format(_to2(totalCharged))}',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: PaxPaymentColors.darkGrayText,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp4),
           Text(
             'Payments: $successCount/${_transactions.length} successful',
             textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: PaxPaymentColors.mediumGray,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: PaxPaymentColors.mediumGray),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp16),
           if (latest != null)
@@ -893,7 +1090,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               onPressed: () {
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => TransactionDetailScreen(transaction: latest),
+                    builder: (_) =>
+                        TransactionDetailScreen(transaction: latest),
                   ),
                 );
               },
@@ -1006,10 +1204,7 @@ class _KeypayCursorState extends State<_KeypayCursor>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        return Opacity(
-          opacity: _controller.value > 0.45 ? 1 : 0,
-          child: child,
-        );
+        return Opacity(opacity: _controller.value > 0.45 ? 1 : 0, child: child);
       },
       child: Container(
         width: 2.5,
@@ -1018,58 +1213,6 @@ class _KeypayCursorState extends State<_KeypayCursor>
           color: PaxPaymentColors.posKeypayAccent,
           borderRadius: BorderRadius.circular(1),
         ),
-      ),
-    );
-  }
-}
-
-class _CheckoutBrandMark extends StatelessWidget {
-  const _CheckoutBrandMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 36,
-      height: 36,
-      decoration: BoxDecoration(
-        color: PaxPaymentColors.darkGrayText,
-        borderRadius: BorderRadius.circular(PaxPaymentSpacing.radiusMd),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        'Y',
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: PaxPaymentColors.posKeypayAccent,
-              fontWeight: FontWeight.w800,
-              height: 1,
-            ),
-      ),
-    );
-  }
-}
-
-class _MenuGridIcon extends StatelessWidget {
-  const _MenuGridIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    const dotSize = 5.0;
-    const gap = 3.0;
-    Widget dot() => Container(
-          width: dotSize,
-          height: dotSize,
-          decoration: const BoxDecoration(
-            color: PaxPaymentColors.posKeypayAccent,
-            shape: BoxShape.circle,
-          ),
-        );
-    return SizedBox(
-      width: dotSize * 2 + gap,
-      height: dotSize * 2 + gap,
-      child: Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [dot(), dot(), dot(), dot()],
       ),
     );
   }
@@ -1095,7 +1238,9 @@ class _ProcessingCard extends StatelessWidget {
           const CircularProgressIndicator(),
           const SizedBox(height: PaxPaymentSpacing.sp12),
           Text(
-            isCash ? 'Recording cash payment...' : 'Present card and authorize...',
+            isCash
+                ? 'Recording cash payment...'
+                : 'Present card and authorize...',
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: PaxPaymentColors.darkGrayText,

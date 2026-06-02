@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
+import '../../core/security/manager_pin_gate.dart';
 import '../../features/admin/admin_screen.dart';
+import '../../screens/payment_settings_screen.dart';
 import '../../main.dart';
 import 'data/dummy_payments_data.dart';
 import '../../shared/theme/paxpayment_colors.dart';
@@ -73,10 +75,10 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _SectionCard(
-            title: 'Terminal settings',
-            subtitle: 'Reader preferences, tips, and receipts.',
+            title: 'Payment settings',
+            subtitle: 'Tips, cash, receipts, and auto-print.',
             icon: Icons.tune_rounded,
-            onTap: () => _showComingSoon(context, 'Terminal settings'),
+            onTap: () => openPaymentSettings(context),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _SectionCard(
@@ -112,7 +114,7 @@ class SettingsScreen extends StatelessWidget {
 
   static void _goToPaymentScreen(BuildContext context) {
     Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => const CheckoutPaymentScreen()),
+      CheckoutPaymentScreen.materialRoute(),
     );
   }
 
@@ -150,20 +152,27 @@ class SettingsScreen extends StatelessWidget {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
-            onPressed: () {
-              if (currentCtrl.text != storage.loginPassword) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Current password incorrect')),
-                );
+            onPressed: () async {
+              final valid = await storage.verifyLoginPassword(
+                currentCtrl.text.trim(),
+              );
+              if (!valid) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Current password incorrect')),
+                  );
+                }
                 return;
               }
               if (nextCtrl.text.isEmpty || nextCtrl.text != confirmCtrl.text) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('New passwords do not match')),
-                );
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('New passwords do not match')),
+                  );
+                }
                 return;
               }
-              Navigator.pop(ctx, true);
+              if (ctx.mounted) Navigator.pop(ctx, true);
             },
             child: const Text('Save'),
           ),
@@ -210,20 +219,29 @@ class SettingsScreen extends StatelessWidget {
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
-            onPressed: () {
-              if (currentCtrl.text.trim() != storage.managerPin) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Current PIN incorrect')),
-                );
+            onPressed: () async {
+              final valid = await storage.verifyManagerPin(
+                currentCtrl.text.trim(),
+              );
+              if (!valid) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Current PIN incorrect')),
+                  );
+                }
                 return;
               }
-              if (nextCtrl.text.trim().length != 4) {
-                ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('PIN must be 4 digits')),
-                );
+              if (nextCtrl.text.trim().length < 4) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('PIN must be at least 4 digits'),
+                    ),
+                  );
+                }
                 return;
               }
-              Navigator.pop(ctx, true);
+              if (ctx.mounted) Navigator.pop(ctx, true);
             },
             child: const Text('Save'),
           ),
@@ -265,7 +283,13 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
 
-    if (ok != true) return;
+    if (ok != true || !context.mounted) return;
+
+    final pinOk = await verifyManagerPin(
+      context,
+      reason: 'Manager PIN is required to reset transactions.',
+    );
+    if (!pinOk || !context.mounted) return;
 
     await DummyPaymentsData.clearAll();
     if (!context.mounted) return;

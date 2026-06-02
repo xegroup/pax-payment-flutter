@@ -29,6 +29,9 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+### Android signing ###
+android/key.properties
+
 ### Flutter / Dart ###
 .dart_tool/
 .flutter-plugins

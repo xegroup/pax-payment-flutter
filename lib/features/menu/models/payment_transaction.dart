@@ -1,4 +1,4 @@
-enum PaymentStatus { success, failed }
+enum PaymentStatus { success, failed, refunded }
 
 /// Payment row / detail model used across list, reports and refund flow.
 class PaymentTransaction {
@@ -10,6 +10,7 @@ class PaymentTransaction {
   final String cardType;
   final bool refundSupported;
   final bool isRefund;
+  final bool isRefunded;
   final String? originalTransactionId;
 
   /// Last 4 digits of the card when known (from terminal / native).
@@ -30,6 +31,7 @@ class PaymentTransaction {
     required this.cardType,
     required this.refundSupported,
     this.isRefund = false,
+    this.isRefunded = false,
     this.originalTransactionId,
     this.cardLast4,
     this.evoTransactionRef,
@@ -37,9 +39,10 @@ class PaymentTransaction {
   });
 
   /// Reference to send to native refund (EVO); falls back to [id].
-  String get refundOriginalId => (evoTransactionRef != null && evoTransactionRef!.trim().isNotEmpty)
-      ? evoTransactionRef!.trim()
-      : id.trim();
+  String get refundOriginalId =>
+      (evoTransactionRef != null && evoTransactionRef!.trim().isNotEmpty)
+          ? evoTransactionRef!.trim()
+          : id.trim();
 
   String get maskedLast4Display {
     final d = cardLast4?.trim() ?? '';
@@ -51,18 +54,45 @@ class PaymentTransaction {
 
   bool get isCash => cardType.toLowerCase() == 'cash';
 
+  PaymentTransaction copyWith({
+    PaymentStatus? status,
+    bool? isRefunded,
+    bool? refundSupported,
+  }) {
+    return PaymentTransaction(
+      id: id,
+      amount: amount,
+      status: status ?? this.status,
+      time: time,
+      customerName: customerName,
+      cardType: cardType,
+      refundSupported: refundSupported ?? this.refundSupported,
+      isRefund: isRefund,
+      isRefunded: isRefunded ?? this.isRefunded,
+      originalTransactionId: originalTransactionId,
+      cardLast4: cardLast4,
+      evoTransactionRef: evoTransactionRef,
+      storeTag: storeTag,
+    );
+  }
+
   factory PaymentTransaction.fromJson(Map<String, dynamic> json) {
+    final statusStr = (json['status'] ?? 'failed').toString().toLowerCase();
+    final status = switch (statusStr) {
+      'success' => PaymentStatus.success,
+      'refunded' => PaymentStatus.refunded,
+      _ => PaymentStatus.failed,
+    };
     return PaymentTransaction(
       id: (json['id'] ?? '').toString(),
       amount: ((json['amount'] as num?) ?? 0).toDouble(),
-      status: ((json['status'] ?? 'failed').toString().toLowerCase() == 'success')
-          ? PaymentStatus.success
-          : PaymentStatus.failed,
+      status: status,
       time: DateTime.tryParse((json['time'] ?? '').toString()) ?? DateTime.now(),
       customerName: (json['customerName'] ?? 'Walk-in Customer').toString(),
       cardType: (json['cardType'] ?? 'Card').toString(),
       refundSupported: (json['refundSupported'] as bool?) ?? false,
       isRefund: (json['isRefund'] as bool?) ?? false,
+      isRefunded: (json['isRefunded'] as bool?) ?? false,
       originalTransactionId: json['originalTransactionId']?.toString(),
       cardLast4: json['cardLast4']?.toString(),
       evoTransactionRef: json['evoTransactionRef']?.toString(),
@@ -80,6 +110,7 @@ class PaymentTransaction {
       'cardType': cardType,
       'refundSupported': refundSupported,
       'isRefund': isRefund,
+      'isRefunded': isRefunded,
       'originalTransactionId': originalTransactionId,
       'cardLast4': cardLast4,
       'evoTransactionRef': evoTransactionRef,

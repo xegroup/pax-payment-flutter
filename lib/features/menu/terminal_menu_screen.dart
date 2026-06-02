@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
+import '../../screens/device_settings_screen.dart';
+import '../../screens/payment_settings_screen.dart';
 import 'payment_links_screen.dart';
 import 'reports_analytics_screen.dart';
 import 'settings_screen.dart';
@@ -68,8 +70,15 @@ class TerminalMenuScreen extends StatelessWidget {
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _MenuTile(
             title: 'Payment settings',
-            subtitle: 'Tips, password, and terminal options.',
+            subtitle: 'Tips, cash, receipts, and auto-print.',
             icon: Icons.tune_rounded,
+            onTap: () => openPaymentSettings(context),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp10),
+          _MenuTile(
+            title: 'App settings',
+            subtitle: 'Password, language, and account.',
+            icon: Icons.settings_outlined,
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -81,14 +90,12 @@ class TerminalMenuScreen extends StatelessWidget {
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _MenuTile(
             title: 'Device settings',
-            subtitle: 'System settings on this reader.',
+            subtitle: 'Wi‑Fi, printer test, terminal IDs.',
             icon: Icons.settings_suggest_rounded,
             onTap: () {
-              // For now this just shows a helper message.
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Use the device system settings for hardware options.'),
-                  behavior: SnackBarBehavior.floating,
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const DeviceSettingsScreen(),
                 ),
               );
             },

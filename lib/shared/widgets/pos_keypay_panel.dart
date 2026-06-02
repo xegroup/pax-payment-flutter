@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../theme/paxpayment_colors.dart';
 import '../theme/paxpayment_spacing.dart';
 
-/// Handheld-style keypay: 3×3 digits, bottom row, and a vertical operator column.
+/// Handheld-style keypay: 3×3 digits, bottom row (00 · 0 · ⌫), operator column, optional Charge footer.
 class PosKeypayPanel extends StatelessWidget {
   const PosKeypayPanel({
     super.key,
@@ -12,159 +12,259 @@ class PosKeypayPanel extends StatelessWidget {
     required this.onDelete,
     required this.onClear,
     this.onOperatorTap,
+    this.footer,
   });
 
   final ValueChanged<String> onDigit;
   final VoidCallback onDelete;
   final VoidCallback onClear;
   final ValueChanged<String>? onOperatorTap;
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
     final bg = PaxPaymentColors.lightGray;
     final opBg = PaxColors.grey150;
 
+    const footerH = 52.0;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(PaxPaymentSpacing.radiusLg),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Container(
-            color: bg,
-            child: Row(
+          Positioned.fill(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      PaxPaymentSpacing.sp10,
-                      PaxPaymentSpacing.sp10,
-                      PaxPaymentSpacing.sp6,
-                      PaxPaymentSpacing.sp10,
-                    ),
-                    child: Column(
+                  child: Container(
+                    color: bg,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
-                          child: Row(
-                            children: [
-                              Expanded(child: _NumKey(label: '1', onTap: () => onDigit('1'))),
-                              const SizedBox(width: PaxPaymentSpacing.sp8),
-                              Expanded(child: _NumKey(label: '2', onTap: () => onDigit('2'))),
-                              const SizedBox(width: PaxPaymentSpacing.sp8),
-                              Expanded(child: _NumKey(label: '3', onTap: () => onDigit('3'))),
-                            ],
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                              PaxPaymentSpacing.sp10,
+                              PaxPaymentSpacing.sp10,
+                              PaxPaymentSpacing.sp6,
+                              PaxPaymentSpacing.sp10,
+                            ),
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '1',
+                                          onTap: () => onDigit('1'),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: PaxPaymentSpacing.sp8,
+                                      ),
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '2',
+                                          onTap: () => onDigit('2'),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: PaxPaymentSpacing.sp8,
+                                      ),
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '3',
+                                          onTap: () => onDigit('3'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: PaxPaymentSpacing.sp8),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '4',
+                                          onTap: () => onDigit('4'),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: PaxPaymentSpacing.sp8,
+                                      ),
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '5',
+                                          onTap: () => onDigit('5'),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: PaxPaymentSpacing.sp8,
+                                      ),
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '6',
+                                          onTap: () => onDigit('6'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: PaxPaymentSpacing.sp8),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '7',
+                                          onTap: () => onDigit('7'),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: PaxPaymentSpacing.sp8,
+                                      ),
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '8',
+                                          onTap: () => onDigit('8'),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: PaxPaymentSpacing.sp8,
+                                      ),
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '9',
+                                          onTap: () => onDigit('9'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: PaxPaymentSpacing.sp8),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '00',
+                                          onTap: () => onDigit('00'),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: PaxPaymentSpacing.sp8,
+                                      ),
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '0',
+                                          onTap: () => onDigit('0'),
+                                        ),
+                                      ),
+                                      const SizedBox(
+                                        width: PaxPaymentSpacing.sp8,
+                                      ),
+                                      Expanded(
+                                        child: _NumKey(
+                                          label: '⌫',
+                                          isAction: true,
+                                          onTap: () {
+                                            HapticFeedback.selectionClick();
+                                            onDelete();
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(height: PaxPaymentSpacing.sp8),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              Expanded(child: _NumKey(label: '4', onTap: () => onDigit('4'))),
-                              const SizedBox(width: PaxPaymentSpacing.sp8),
-                              Expanded(child: _NumKey(label: '5', onTap: () => onDigit('5'))),
-                              const SizedBox(width: PaxPaymentSpacing.sp8),
-                              Expanded(child: _NumKey(label: '6', onTap: () => onDigit('6'))),
-                            ],
+                        Container(
+                          width: 52,
+                          color: opBg,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: PaxPaymentSpacing.sp4,
                           ),
-                        ),
-                        const SizedBox(height: PaxPaymentSpacing.sp8),
-                        Expanded(
-                          child: Row(
+                          child: Column(
                             children: [
-                              Expanded(child: _NumKey(label: '7', onTap: () => onDigit('7'))),
-                              const SizedBox(width: PaxPaymentSpacing.sp8),
-                              Expanded(child: _NumKey(label: '8', onTap: () => onDigit('8'))),
-                              const SizedBox(width: PaxPaymentSpacing.sp8),
-                              Expanded(child: _NumKey(label: '9', onTap: () => onDigit('9'))),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: PaxPaymentSpacing.sp8),
-                        Expanded(
-                          child: Row(
-                            children: [
-                              const Expanded(child: SizedBox.shrink()),
-                              const SizedBox(width: PaxPaymentSpacing.sp8),
                               Expanded(
-                                child: _NumKey(
-                                  label: '0',
-                                  onTap: () => onDigit('0'),
+                                child: _OpKey(
+                                  label: 'C',
+                                  onTap: () {
+                                    HapticFeedback.mediumImpact();
+                                    onClear();
+                                  },
                                 ),
                               ),
-                              const SizedBox(width: PaxPaymentSpacing.sp8),
                               Expanded(
-                                child: _NumKey(
-                                  label: '⌫',
-                                  isAction: true,
+                                child: _OpKey(
+                                  label: '÷',
                                   onTap: () {
                                     HapticFeedback.selectionClick();
-                                    onDelete();
+                                    onOperatorTap?.call('÷');
+                                  },
+                                ),
+                              ),
+                              Expanded(
+                                child: _OpKey(
+                                  label: '×',
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    onOperatorTap?.call('×');
+                                  },
+                                ),
+                              ),
+                              Expanded(
+                                child: _OpKey(
+                                  label: '−',
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    onOperatorTap?.call('−');
+                                  },
+                                ),
+                              ),
+                              Expanded(
+                                child: _OpKey(
+                                  label: '+',
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    onOperatorTap?.call('+');
+                                  },
+                                ),
+                              ),
+                              Expanded(
+                                child: _OpKey(
+                                  label: '=',
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    onOperatorTap?.call('=');
                                   },
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        Container(
+                          width: 3,
+                          color: PaxPaymentColors.posKeypayAccent,
+                        ),
                       ],
                     ),
                   ),
                 ),
-                Container(
-                  width: 52,
-                  color: opBg,
-                  padding: const EdgeInsets.symmetric(vertical: PaxPaymentSpacing.sp8),
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: _OpKey(
-                          label: 'C',
-                          onTap: () {
-                            HapticFeedback.mediumImpact();
-                            onClear();
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _OpKey(
-                          label: '÷',
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            onOperatorTap?.call('÷');
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _OpKey(
-                          label: '×',
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            onOperatorTap?.call('×');
-                          },
-                        ),
-                      ),
-                      Expanded(
-                        child: _OpKey(
-                          label: '−',
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            onOperatorTap?.call('−');
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 3,
-                  color: PaxPaymentColors.posKeypayAccent,
-                ),
+                if (footer != null) footer!,
               ],
             ),
           ),
           Positioned(
             right: -2,
             top: 0,
-            bottom: 0,
+            bottom: footer != null ? footerH : 0,
             child: Center(
               child: Container(
                 width: 10,
@@ -210,7 +310,9 @@ class _NumKey extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isAction ? PaxColors.grey200.withValues(alpha: 0.65) : PaxPaymentColors.white,
+      color: isAction
+          ? PaxColors.grey200.withValues(alpha: 0.65)
+          : PaxPaymentColors.white,
       borderRadius: BorderRadius.circular(PaxPaymentSpacing.radiusMd),
       elevation: 0,
       shadowColor: Colors.transparent,
@@ -221,9 +323,9 @@ class _NumKey extends StatelessWidget {
           child: Text(
             label,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: PaxPaymentColors.darkGrayText,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ),
@@ -242,13 +344,16 @@ class _OpKey extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Center(
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: PaxPaymentColors.darkGrayText,
-                fontWeight: FontWeight.w500,
-                height: 1.0,
-              ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: PaxPaymentColors.darkGrayText,
+              fontWeight: FontWeight.w500,
+              height: 1.0,
+            ),
+          ),
         ),
       ),
     );

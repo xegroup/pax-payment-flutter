@@ -20,15 +20,40 @@ class TransactionsListScreen extends StatefulWidget {
 class _TransactionsListScreenState extends State<TransactionsListScreen> {
   PaymentsPeriodFilter _period = PaymentsPeriodFilter.week;
   PaymentsStatusFilter _status = PaymentsStatusFilter.all;
+  final _searchCtrl = TextEditingController();
 
   static final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
   static final _time = DateFormat('HH:mm');
   static final _date = DateFormat('d MMM');
 
-  List<PaymentTransaction> get _items => DummyPaymentsData.filtered(
-        period: _period,
-        status: _status,
-      );
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<PaymentTransaction> get _items {
+    var list = DummyPaymentsData.filtered(
+      period: _period,
+      status: _status,
+    );
+    final q = _searchCtrl.text.trim().toLowerCase();
+    if (q.isEmpty) return list;
+    return list.where((t) => _matchesSearch(t, q)).toList();
+  }
+
+  bool _matchesSearch(PaymentTransaction t, String q) {
+    if (t.id.toLowerCase().contains(q)) return true;
+    final last4 = t.cardLast4?.trim() ?? '';
+    if (last4.length >= 4 && last4.toLowerCase().contains(q)) return true;
+    final amountStr = t.amount.abs().toStringAsFixed(2);
+    if (amountStr.contains(q) || amountStr.replaceAll('.', '').contains(q)) {
+      return true;
+    }
+    final formatted = _money.format(t.amount.abs()).toLowerCase();
+    if (formatted.contains(q)) return true;
+    return false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +93,30 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
                       ),
                 ),
                 const SizedBox(height: PaxPaymentSpacing.sp8),
+                TextField(
+                  controller: _searchCtrl,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Search ref, last 4, or amount',
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _searchCtrl.text.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear_rounded),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              setState(() {});
+                            },
+                          ),
+                    filled: true,
+                    fillColor: PaxPaymentColors.adminBackground,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: PaxPaymentSpacing.sp10),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -232,21 +281,25 @@ class _StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? PaxPaymentColors.darkGrayText : PaxPaymentColors.white,
+      color: selected
+          ? PaxPaymentColors.primaryBlue.withValues(alpha: 0.12)
+          : PaxPaymentColors.adminBackground,
       borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: PaxPaymentSpacing.sp14,
-            vertical: PaxPaymentSpacing.sp8,
+            horizontal: PaxPaymentSpacing.sp16,
+            vertical: PaxPaymentSpacing.sp10,
           ),
           child: Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: selected ? Colors.white : PaxPaymentColors.darkGrayText,
+                  color: selected
+                      ? PaxPaymentColors.primaryBlue
+                      : PaxPaymentColors.darkGrayText,
                 ),
           ),
         ),
@@ -304,6 +357,7 @@ class _PaymentCard extends StatelessWidget {
                     status: tx.status,
                     compact: true,
                     isRefund: tx.isRefund,
+                    isRefunded: tx.isRefunded,
                   ),
                 ],
               ),

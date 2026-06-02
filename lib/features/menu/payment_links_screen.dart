@@ -50,10 +50,8 @@ class PaymentLinksScreen extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const CheckoutPaymentScreen(
-                          initialMethod: CheckoutPaymentMethod.paymentLink,
-                        ),
+                      CheckoutPaymentScreen.materialRoute(
+                        initialMethod: CheckoutPaymentMethod.paymentLink,
                       ),
                     );
                   },
