@@ -1,9 +1,13 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
+import '../../screens/payment_flow_helpers.dart';
+import '../../screens/payment_navigation.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import '../../screens/payment_method_screen.dart';
@@ -77,6 +81,11 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   int _currentPaymentIndex = 0;
   bool _isProcessing = false;
   double _selectedTip = 0;
+
+
+  double totalAmount=0.0;
+
+  final bool completeWithPopResult=false;
 
   @override
   void initState() {
@@ -458,7 +467,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     _restartFlow();
   }
 
-  void _onChargePressed() {
+  Future<void> _onChargePressed() async {
     final parsed = _keypayAmount;
     if (parsed <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -476,6 +485,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
         ),
       );
     } else {
+      totalAmount = parsed;
+      await _startCardPayment();
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => PaymentMethodScreen(totalAmount: parsed),
@@ -483,7 +494,92 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
       );
     }
   }
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+  String generateTransactionId() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final r = Random.secure();
+    return 'TXN-${List.generate(8, (_) => chars[r.nextInt(chars.length)]).join()}';
+  }
+  Future<void> _startCardPayment() async {
+    setState(() => _isProcessing = true);
 
+    try {
+      final result = await _paymentService.startPayment(
+        amount: (totalAmount * 100).round(),
+        title: 'Payment',
+        paymentMethod: 'card',
+      );
+
+      if (!mounted) return;
+
+      final status = parsePaymentStatus(result);
+      if (status == null) {
+        _showMessage('Payment cancelled');
+        return;
+      }
+
+      final nativeId = result['transactionId']?.toString().trim();
+      final transactionId = (nativeId != null && nativeId.isNotEmpty)
+          ? nativeId
+          : generateTransactionId();
+      final last4 = extractCardLast4(result['cardNumber']);
+      final cardType = parseCardType(result);
+      final evoRef = nativeId?.isNotEmpty == true ? nativeId : null;
+
+      if (status == PaymentStatus.success) {
+        await saveCardTransaction(
+          amount: totalAmount,
+          status: PaymentStatus.success,
+          transactionId: transactionId,
+          cardLast4: last4,
+          cardType: cardType,
+          evoTransactionRef: evoRef,
+        );
+        if (!mounted) return;
+        navigateToPaymentSuccess(
+          context,
+          amount: totalAmount,
+          cardLast4: last4,
+          cardType: cardType,
+          transactionId: transactionId,
+          popWithResult: completeWithPopResult,
+        );
+      } else {
+        await saveCardTransaction(
+          amount: totalAmount,
+          status: PaymentStatus.failed,
+          transactionId: transactionId,
+          cardLast4: last4,
+          cardType: cardType,
+          evoTransactionRef: evoRef,
+        );
+        if (!mounted) return;
+        navigateToPaymentDeclined(
+          context,
+          amount: totalAmount,
+          declineReason: parseDeclineReason(result),
+          popWithResult: completeWithPopResult,
+        );
+      }
+    } on PaymentServiceException catch (e) {
+      if (!mounted) return;
+      _showMessage(e.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Payment could not be processed');
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
   Widget _splitChoiceStep(BuildContext context) {
     return _card(
       context,

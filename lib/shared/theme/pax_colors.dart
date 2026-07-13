@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 
 /// Single source of truth for brand + semantic colors (Obsidian POS palette).
 abstract final class PaxColors {
-  static const teal400 = Color(0xFF00D4AA);
-  static const teal500 = Color(0xFF00B894);
-  static const teal600 = Color(0xFF009E7F);
+  static const teal400 = Color(0xFF000846);
+  static const teal500 = Color(0xFF000846);
+  static const teal600 = Color(0xFF0F175E);
   static const teal100 = Color(0xFFCCF5EE);
   static const teal50 = Color(0xFFE6FAF6);
-
   static const grey50 = Color(0xFFF8F9FA);
   static const grey100 = Color(0xFFF1F3F5);
   static const grey150 = Color(0xFFE9ECEF);
@@ -22,9 +21,9 @@ abstract final class PaxColors {
   static const grey900 = Color(0xFF0F1117);
   static const grey950 = Color(0xFF0A0C10);
 
-  static const success = Color(0xFF00C48C);
+  static const success = Color(0xFF000846);
   static const successLight = Color(0xFFE6F9F3);
-  static const successDark = Color(0xFF00A374);
+  static const successDark = Color(0xFF071380);
 
   static const warning = Color(0xFFFFA940);
   static const warningLight = Color(0xFFFFF3E0);
@@ -41,9 +40,9 @@ abstract final class PaxColors {
   static const visa = Color(0xFF1A1F71);
   static const mastercard = Color(0xFFEB001B);
   static const amex = Color(0xFF2E77BC);
-  static const cash = Color(0xFF00A86B);
+  static const cash = Color(0xFF00159C);
 
-  static const chart1 = Color(0xFF00D4AA);
+  static const chart1 = Color(0xB07684E1);
   static const chart2 = Color(0xFF4096FF);
   static const chart3 = Color(0xFFFFA940);
   static const chart4 = Color(0xFFFF4D4F);
