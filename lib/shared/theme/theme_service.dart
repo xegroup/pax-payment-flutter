@@ -25,7 +25,7 @@ class ThemeService extends ChangeNotifier {
   // Legacy static palette — maps to Obsidian tokens.
   static const Color xeposWhite = PaxColors.white;
   static const Color xeposBlack = PaxColors.black;
-  static const Color xeposPrimaryBlue = PaxColors.teal500;
+  static const Color xeposPrimaryBlue = PaxColors.blueLight;
   static const Color xeposButtonGreen = PaxColors.success;
   static const Color xeposTextGreen = PaxColors.successDark;
   static const Color xeposMediumGray = PaxColors.grey500;

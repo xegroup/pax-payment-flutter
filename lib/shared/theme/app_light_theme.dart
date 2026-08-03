@@ -9,7 +9,7 @@ import 'pax_theme_text.dart';
 
 ThemeData buildLightTheme() {
   final colorScheme = ColorScheme.light(
-    primary: PaxColors.teal500,
+    primary: PaxColors.blueLight,
     onPrimary: PaxColors.white,
     primaryContainer: PaxColors.teal50,
     onPrimaryContainer: PaxColors.teal600,
@@ -39,7 +39,7 @@ ThemeData buildLightTheme() {
     scrim: PaxColors.black,
     inverseSurface: PaxColors.grey900,
     onInverseSurface: PaxColors.grey50,
-    inversePrimary: PaxColors.teal400,
+    inversePrimary: PaxColors.blueDark,
   );
 
   return ThemeData(
@@ -76,13 +76,13 @@ ThemeData buildLightTheme() {
       ),
       labelTextStyle: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return PaxTextStyles.navLabel.copyWith(color: PaxColors.teal500);
+          return PaxTextStyles.navLabel.copyWith(color: PaxColors.blueLight);
         }
         return PaxTextStyles.navLabel.copyWith(color: PaxColors.grey500);
       }),
       iconTheme: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const IconThemeData(color: PaxColors.teal500, size: 22);
+          return const IconThemeData(color: PaxColors.blueLight, size: 22);
         }
         return const IconThemeData(color: PaxColors.grey400, size: 22);
       }),
@@ -116,7 +116,7 @@ ThemeData buildLightTheme() {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: PaxSpacing.brMd,
-        borderSide: const BorderSide(color: PaxColors.teal500, width: 1.5),
+        borderSide: const BorderSide(color: PaxColors.blueLight, width: 1.5),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: PaxSpacing.brMd,
@@ -134,7 +134,7 @@ ThemeData buildLightTheme() {
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
-        backgroundColor: PaxColors.teal500,
+        backgroundColor: PaxColors.blueLight,
         foregroundColor: PaxColors.white,
         disabledBackgroundColor: PaxColors.grey200,
         disabledForegroundColor: PaxColors.grey400,
@@ -159,7 +159,7 @@ ThemeData buildLightTheme() {
     ),
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
-        foregroundColor: PaxColors.teal500,
+        foregroundColor: PaxColors.blueLight,
         textStyle: PaxTextStyles.buttonMd,
         shape: RoundedRectangleBorder(borderRadius: PaxSpacing.brSm),
         padding: const EdgeInsets.symmetric(
@@ -239,14 +239,14 @@ ThemeData buildLightTheme() {
         return PaxColors.grey400;
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return PaxColors.teal500;
+        if (states.contains(WidgetState.selected)) return PaxColors.blueLight;
         return PaxColors.grey200;
       }),
       trackOutlineColor: WidgetStateProperty.all(PaxColors.transparent),
     ),
     checkboxTheme: CheckboxThemeData(
       fillColor: WidgetStateProperty.resolveWith((states) {
-        if (states.contains(WidgetState.selected)) return PaxColors.teal500;
+        if (states.contains(WidgetState.selected)) return PaxColors.blueLight;
         return PaxColors.transparent;
       }),
       checkColor: WidgetStateProperty.all(PaxColors.white),
@@ -256,24 +256,24 @@ ThemeData buildLightTheme() {
     snackBarTheme: SnackBarThemeData(
       backgroundColor: PaxColors.grey900,
       contentTextStyle: PaxTextStyles.bodyMedium.copyWith(color: PaxColors.white),
-      actionTextColor: PaxColors.teal400,
+      actionTextColor: PaxColors.blueDark,
       shape: RoundedRectangleBorder(borderRadius: PaxSpacing.brMd),
       behavior: SnackBarBehavior.floating,
       elevation: 0,
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: PaxColors.teal500,
+      color: PaxColors.blueLight,
       linearTrackColor: PaxColors.teal50,
       circularTrackColor: PaxColors.teal50,
       linearMinHeight: 4,
     ),
     tabBarTheme: TabBarThemeData(
-      labelColor: PaxColors.teal500,
+      labelColor: PaxColors.blueLight,
       unselectedLabelColor: PaxColors.grey500,
       labelStyle: PaxTextStyles.buttonMd,
       unselectedLabelStyle: PaxTextStyles.bodyMedium,
       indicator: UnderlineTabIndicator(
-        borderSide: const BorderSide(color: PaxColors.teal500, width: 2),
+        borderSide: const BorderSide(color: PaxColors.blueLight, width: 2),
         borderRadius: PaxSpacing.brPill,
       ),
       indicatorSize: TabBarIndicatorSize.label,
@@ -304,7 +304,7 @@ ThemeData buildLightTheme() {
       ),
     ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: PaxColors.teal500,
+      backgroundColor: PaxColors.blueLight,
       foregroundColor: PaxColors.white,
       elevation: 0,
       focusElevation: 0,

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../shared/theme/pax_text_styles.dart';
 import 'payment_flow_helpers.dart';
-import 'payment_method_screen.dart';
+import 'card_payment_screen.dart';
 import 'teya_ui.dart';
 
 /// Tip selection after amount entry, before payment method.
@@ -84,7 +84,7 @@ class _TipScreenState extends State<TipScreen> {
   Future<void> _onContinue() async {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
-        builder: (_) => PaymentMethodScreen(
+        builder: (_) => CardPaymentScreen(
           totalAmount: _totalAmount,
           splitLabel: widget.splitLabel,
           completeWithPopResult: widget.completeWithPopResult,

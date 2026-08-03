@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:pax_payment/features/menu/checkout_payment_screen.dart';
 
 import '../shared/theme/pax_text_styles.dart';
-import 'payment_method_screen.dart';
 import 'payment_navigation.dart';
 import 'teya_ui.dart';
 

@@ -26,7 +26,7 @@ class NavigationBarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = isDark ? PaxColors.teal400 : PaxColors.teal500;
+    final accent = isDark ? PaxColors.blueDark : PaxColors.blueLight;
     final muted = isDark ? PaxColors.grey600 : PaxColors.grey400;
 
     return Expanded(

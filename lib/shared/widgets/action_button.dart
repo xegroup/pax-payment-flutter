@@ -60,7 +60,7 @@ class _ActionButtonState extends State<ActionButton>
 
     final accent = widget.isDestructive
         ? PaxColors.error
-        : (widget.accentColor ?? PaxColors.teal500);
+        : (widget.accentColor ?? PaxColors.blueLight);
 
     final iconBg = widget.isDestructive
         ? (isDark

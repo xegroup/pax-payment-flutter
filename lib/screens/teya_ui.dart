@@ -8,12 +8,12 @@ import '../shared/widgets/pax_pos_app_bar.dart';
 /// Handheld payment-flow tokens — aligned with [PaxColors].
 abstract final class TeyaColors {
   static const white = PaxColors.white;
-  static const accent = PaxColors.teal500;
+  static const accent = PaxColors.blueLight;
   static const onAccent = PaxColors.white;
   static const textDark = PaxColors.grey800;
   static const textGrey = PaxColors.grey500;
   static const borderGrey = PaxColors.grey200;
-  static const successGreen = PaxColors.successDark;
+  static const successGreen = PaxColors.blueDark;
   static const errorRed = PaxColors.error;
 }
 

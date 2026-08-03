@@ -183,7 +183,7 @@ class PaxButton extends StatelessWidget {
 
     return switch (buttonVariant) {
       PaxButtonVariant.primary => FilledButton.styleFrom(
-          backgroundColor: isDark ? PaxColors.teal400 : PaxColors.teal500,
+          backgroundColor: isDark ? PaxColors.blueDark : PaxColors.blueLight,
           foregroundColor: isDark ? PaxColors.grey950 : PaxColors.white,
           minimumSize: Size(0, _height),
           shape: baseShape,

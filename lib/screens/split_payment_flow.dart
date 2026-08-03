@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/di/injection.dart';
 import '../core/database/local_storage.dart';
-import 'payment_method_screen.dart';
+import 'card_payment_screen.dart';
 import 'tip_screen.dart';
 
 /// Runs each split amount through Tip → Payment Method → EVO in sequence.
@@ -47,7 +47,7 @@ class _SplitPaymentFlowScreenState extends State<SplitPaymentFlowScreen> {
                 splitLabel: label,
                 completeWithPopResult: true,
               )
-            : PaymentMethodScreen(
+            : CardPaymentScreen(
                 totalAmount: amount,
                 splitLabel: label,
                 completeWithPopResult: true,

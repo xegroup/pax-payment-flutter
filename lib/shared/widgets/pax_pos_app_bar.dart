@@ -22,11 +22,11 @@ class PaxPaymentLogoMark extends StatelessWidget {
       width: side,
       height: side,
       decoration: BoxDecoration(
-        color: PaxColors.teal500,
+        color: PaxColors.blueLight,
         borderRadius: BorderRadius.circular(radius),
         boxShadow: [
           BoxShadow(
-            color: PaxColors.teal500.withValues(alpha: 0.22),
+            color: PaxColors.blueLight.withValues(alpha: 0.22),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -59,7 +59,7 @@ class PaxPosMenuGridIcon extends StatelessWidget {
     final r = Responsive.of(context);
     final double s = dotSize ?? r.value(mobile: 4.5, tablet: 5.0);
     const g = 3.0;
-    final dotColor = color ?? PaxColors.teal500;
+    final dotColor = color ?? PaxColors.blueLight;
 
     Widget dot() => Container(
           width: s,
@@ -207,7 +207,7 @@ class _BackControl extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.close_rounded, size: 20),
+          // const Icon(Icons.close_rounded, size: 20),
           if (showLabel) ...[
             const SizedBox(width: 4),
             Flexible(

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 /// Single source of truth for brand + semantic colors (Obsidian POS palette).
 abstract final class PaxColors {
-  static const teal400 = Color(0xFF000846);
-  static const teal500 = Color(0xFF000846);
+  static const blueDark = Color(0xFF000846);
+  static const blueLight = Color(0xFF0140be);
   static const teal600 = Color(0xFF0F175E);
   static const teal100 = Color(0xFFCCF5EE);
   static const teal50 = Color(0xFFE6FAF6);

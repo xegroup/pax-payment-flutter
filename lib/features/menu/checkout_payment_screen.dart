@@ -10,7 +10,7 @@ import '../../screens/payment_flow_helpers.dart';
 import '../../screens/payment_navigation.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
-import '../../screens/payment_method_screen.dart';
+import '../../screens/card_payment_screen.dart';
 import '../../screens/split_payment_flow.dart';
 import '../../screens/tip_screen.dart';
 import '../../shared/widgets/pax_pos_app_bar.dart';
@@ -255,7 +255,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               onDigit: _onAmountDigit,
               onDelete: _onAmountDelete,
               onClear: _onAmountClear,
-              onOperatorTap: (_) {},
+              showCalculatorOperators: false,
+              showClearKey: false,
               footer: Material(
                 color: PaxPaymentColors.posKeypayAccent,
                 child: InkWell(
@@ -485,11 +486,9 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
         ),
       );
     } else {
-      totalAmount = parsed;
-      await _startCardPayment();
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => PaymentMethodScreen(totalAmount: parsed),
+          builder: (_) => CardPaymentScreen(totalAmount: parsed),
         ),
       );
     }

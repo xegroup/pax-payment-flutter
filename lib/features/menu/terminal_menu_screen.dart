@@ -183,7 +183,7 @@ class _TerminalHeader extends StatelessWidget {
               );
             },
             icon: const Icon(Icons.edit_outlined),
-            color: PaxPaymentColors.primaryBlue,
+            color: PaxPaymentColors.primaryBlueLight,
           ),
         ],
       ),
@@ -208,7 +208,7 @@ class _MenuTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(PaxPaymentSpacing.radiusXl);
     return Material(
-      color: PaxPaymentColors.white,
+      color: PaxPaymentColors.primaryBlue,
       borderRadius: radius,
       child: InkWell(
         onTap: onTap,
@@ -241,14 +241,14 @@ class _MenuTile extends StatelessWidget {
                       title,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: PaxPaymentColors.darkGrayText,
+                            color: PaxPaymentColors.white,
                           ),
                     ),
                     const SizedBox(height: PaxPaymentSpacing.sp2),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: PaxPaymentColors.mediumGray,
+                            color: PaxPaymentColors.white,
                           ),
                     ),
                   ],
@@ -256,7 +256,7 @@ class _MenuTile extends StatelessWidget {
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: PaxPaymentColors.mediumGray,
+                color: PaxPaymentColors.white,
               ),
             ],
           ),

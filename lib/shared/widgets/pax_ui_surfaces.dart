@@ -132,7 +132,7 @@ class PaxEmptyState extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cs = Theme.of(context).colorScheme;
     final accent =
-        iconColor ?? (isDark ? PaxColors.teal400 : PaxColors.teal500);
+        iconColor ?? (isDark ? PaxColors.blueDark : PaxColors.blueLight);
 
     return Padding(
       padding: const EdgeInsets.symmetric(
