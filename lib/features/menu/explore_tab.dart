@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/di/injection.dart';
-import '../../core/database/local_storage.dart';
+import '../../core/network/MyApiClient.dart';
 import '../../features/auth/login_screen.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
@@ -213,7 +212,7 @@ class ExploreTab extends StatelessWidget {
       ),
     );
     if (yes == true && context.mounted) {
-      await sl<LocalStorage>().setLoggedIn(false);
+      MyApiClient.clearAuthToken();
       if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
