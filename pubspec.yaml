@@ -42,6 +42,10 @@ dependencies:
   fl_chart: ^0.70.2
   package_info_plus: ^8.3.0
   dio: ^5.8.0+1
+  retrofit: ^4.2.0
+  json_annotation: ^4.9.0
+
+
   url_launcher: ^6.3.1
   flutter_secure_storage: ^9.2.4
 
@@ -55,6 +59,9 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  build_runner: ^2.4.9
+  json_serializable: ^6.8.0
+  retrofit_generator: ^10.2.5
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

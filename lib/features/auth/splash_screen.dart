@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/di/injection.dart';
-import '../../core/database/local_storage.dart';
-import '../../screens/first_time_setup_screen.dart';
+import '../../core/network/MyApiClient.dart';
 import '../../shared/responsive/responsive.dart';
-import '../menu/checkout_payment_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -22,27 +19,13 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _routeNext() async {
+    MyApiClient.init('https://api-app.xepay.co.uk/');
+
     await Future<void>.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
-    final storage = sl<LocalStorage>();
-    final configured = await storage.hasCredentials();
-
-    if (!mounted) return;
-
-    if (!configured) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const FirstTimeSetupScreen()),
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    final loggedIn = storage.isLoggedIn;
     Navigator.of(context).pushReplacement(
-      loggedIn
-          ? CheckoutPaymentScreen.materialRoute()
-          : MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
     );
   }
 

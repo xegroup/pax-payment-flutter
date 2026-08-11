@@ -1,14 +1,17 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/di/injection.dart';
-import '../../core/database/local_storage.dart';
+import '../../core/network/MyApiClient.dart';
+import '../../features/auth/data/login_request.dart';
+import '../../features/auth/data/login_response.dart';
+import '../../screens/first_time_setup_screen.dart';
 import '../../shared/resources/paxpayment_strings.dart';
 import '../../shared/responsive/responsive.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import '../menu/checkout_payment_screen.dart';
 
-/// Sign-in screen with local credential check.
+/// Sign-in screen backed by the login API.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailOrPhoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -29,29 +33,62 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _onLogin() async {
-    FocusScope.of(context).unfocus();
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-
-    final storage = sl<LocalStorage>();
-    final userOk = _emailOrPhoneController.text.trim() == storage.loginUsername;
-    final passOk = await storage.verifyLoginPassword(
-      _passwordController.text.trim(),
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
-    if (!userOk || !passOk) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Invalid username or password'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  }
+
+  void _handleLoginResponse(LoginResponse response) {
+    if (response.isSuccess) {
+      MyApiClient.setAuthToken(response.token.trim());
+      Navigator.of(context).pushReplacement(CheckoutPaymentScreen.materialRoute());
       return;
     }
+    _showError(response.failureMessage);
+  }
 
-    await storage.setLoggedIn(true);
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(CheckoutPaymentScreen.materialRoute());
+  Future<void> _onLogin() async {
+    FocusScope.of(context).unfocus();
+    if (_isLoading) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final request = LoginRequest(
+        email: _emailOrPhoneController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+      final response = await MyApiClient.login(request.toJson());
+      if (!mounted) return;
+      _handleLoginResponse(response);
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final parsed = LoginResponse.tryParse(e.response?.data);
+      if (parsed != null) {
+        _showError(parsed.failureMessage);
+        return;
+      }
+      _showError('Unable to sign in. Please try again.');
+    } catch (_) {
+      if (!mounted) return;
+      _showError('Unable to sign in. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _goToSignup() {
+    if (_isLoading || !mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => const FirstTimeSetupScreen()),
+    );
   }
 
   void _onForgotPassword() {
@@ -179,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       autofillHints: const [AutofillHints.username],
                       decoration: InputDecoration(
                         labelText: 'Username',
-                        hintText: sl<LocalStorage>().loginUsername,
+                        hintText: 'Enter your username',
                         filled: true,
                         fillColor: PaxPaymentColors.white,
                         border: OutlineInputBorder(borderRadius: borderRadius),
@@ -267,7 +304,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     SizedBox(
                       height: buttonHeight,
                       child: FilledButton(
-                        onPressed: _onLogin,
+                        onPressed: _isLoading ? null : _onLogin,
                         style: FilledButton.styleFrom(
                           backgroundColor: PaxPaymentColors.primaryBlue,
                           foregroundColor: PaxPaymentColors.white,
@@ -276,14 +313,31 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: borderRadius,
                           ),
                         ),
-                        child: Text(
-                          'Log in',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: PaxPaymentColors.white,
-                                fontWeight: FontWeight.w700,
+                        child: _isLoading
+                            ? SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                  color: PaxPaymentColors.white,
+                                ),
+                              )
+                            : Text(
+                                'Log in',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleMedium
+                                    ?.copyWith(
+                                      color: PaxPaymentColors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                               ),
-                        ),
                       ),
+                    ),
+                    SizedBox(height: PaxPaymentSpacing.sp12),
+                    TextButton(
+                      onPressed: _isLoading ? null : _goToSignup,
+                      child: const Text('Create account'),
                     ),
                   ],
                 ),
