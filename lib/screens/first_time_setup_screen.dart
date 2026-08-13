@@ -46,9 +46,10 @@ class _FirstTimeSetupScreenState extends State<FirstTimeSetupScreen> {
     );
   }
 
-  void _handleSignupResponse(LoginResponse response) {
+  Future<void> _handleSignupResponse(LoginResponse response) async {
     if (response.isSuccess) {
-      MyApiClient.setAuthToken(response.token.trim());
+      await MyApiClient.persistAuthToken(response.token.trim());
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(CheckoutPaymentScreen.materialRoute());
       return;
     }

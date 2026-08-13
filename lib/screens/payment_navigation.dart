@@ -56,7 +56,7 @@ void navigateToPaymentDeclined(
     ),
   );
   if (popWithResult) {
-    Navigator.of(context).push(route);
+    Navigator.of(context).pushReplacement(route);
   } else {
     Navigator.of(context).pushAndRemoveUntil(
       route,

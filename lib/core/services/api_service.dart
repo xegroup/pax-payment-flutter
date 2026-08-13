@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:pax_payment/features/transaction/data/transaction_response.dart';
+import 'package:pax_payment/features/transaction/data/transactions_list_response.dart';
 import 'package:retrofit/dio.dart';
 import 'package:retrofit/error_logger.dart';
 import 'package:retrofit/http.dart';
@@ -19,10 +21,12 @@ abstract class ApiService {
   @DioResponseType(ResponseType.plain)
   Future<LoginResponse> signup(@Body() Map<String, dynamic> body);
 
-// @GET("api/dashboard/stats")
-  // Future<GetStatsResponse> getStats(@Header("Authorization") String? authorization);
+  @POST("api/app/transactions")
+  @DioResponseType(ResponseType.plain)
+  Future<TransactionResponse> saveTransaction(
+    @Body() Map<String, dynamic> body,
+  );
 
-
-
-
+  @GET("api/app/transactions")
+  Future<TransactionsListResponse> getAllTransactions();
 }

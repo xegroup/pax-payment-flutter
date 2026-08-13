@@ -101,8 +101,20 @@ class DummyPaymentsData {
     required PaymentsPeriodFilter period,
     required PaymentsStatusFilter status,
   }) {
+    return filterList(
+      all,
+      period: period,
+      status: status,
+    );
+  }
+
+  static List<PaymentTransaction> filterList(
+    List<PaymentTransaction> source, {
+    required PaymentsPeriodFilter period,
+    required PaymentsStatusFilter status,
+  }) {
     final start = _periodStart(period);
-    var list = all.where((e) => !e.time.isBefore(start)).toList();
+    var list = source.where((e) => !e.time.isBefore(start)).toList();
     switch (status) {
       case PaymentsStatusFilter.all:
         break;
