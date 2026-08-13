@@ -1,6 +1,8 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/network/MyApiClient.dart';
 import '../../shared/responsive/responsive.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
@@ -9,7 +11,7 @@ import 'models/payment_transaction.dart';
 import 'transaction_detail_screen.dart';
 import 'widgets/payment_status_badge.dart';
 
-/// Payments list with period + status filters (dummy data).
+/// Payments list loaded from the transactions API.
 class TransactionsListScreen extends StatefulWidget {
   const TransactionsListScreen({super.key});
 
@@ -18,13 +20,23 @@ class TransactionsListScreen extends StatefulWidget {
 }
 
 class _TransactionsListScreenState extends State<TransactionsListScreen> {
-  PaymentsPeriodFilter _period = PaymentsPeriodFilter.week;
+  PaymentsPeriodFilter _period = PaymentsPeriodFilter.today;
   PaymentsStatusFilter _status = PaymentsStatusFilter.all;
   final _searchCtrl = TextEditingController();
+
+  List<PaymentTransaction> _transactions = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   static final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
   static final _time = DateFormat('HH:mm');
   static final _date = DateFormat('d MMM');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
+  }
 
   @override
   void dispose() {
@@ -32,8 +44,38 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     super.dispose();
   }
 
+  Future<void> _loadTransactions() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await MyApiClient.getAllTransactions();
+      if (!mounted) return;
+      setState(() {
+        _transactions = response.data.map((r) => r.toPaymentTransaction()).toList()
+          ..sort((a, b) => b.time.compareTo(a.time));
+        _isLoading = false;
+      });
+    } on DioException catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Unable to load payments. Please try again.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Unable to load payments. Please try again.';
+      });
+    }
+  }
+
   List<PaymentTransaction> get _items {
-    var list = DummyPaymentsData.filtered(
+    var list = DummyPaymentsData.filterList(
+      _transactions,
       period: _period,
       status: _status,
     );
@@ -66,6 +108,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     );
     final items = _items;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final useGridView = false;
 
     return Scaffold(
       backgroundColor: PaxPaymentColors.adminBackground,
@@ -75,6 +118,13 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         foregroundColor: PaxPaymentColors.darkGrayText,
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _isLoading ? null : _loadTransactions,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -182,45 +232,130 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             ),
           ),
           Expanded(
-            child: items.isEmpty
-                ? Center(
-                    child: Text(
-                      'No payments in this range.',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: PaxPaymentColors.mediumGray,
-                          ),
-                    ),
-                  )
-                : ListView.separated(
-                    padding: EdgeInsets.fromLTRB(
-                      pad,
-                      PaxPaymentSpacing.sp16,
-                      pad,
-                      pad + bottomInset + 72,
-                    ),
-                    itemCount: items.length,
-                    separatorBuilder: (context, index) =>
-                        const SizedBox(height: PaxPaymentSpacing.sp10),
-                    itemBuilder: (context, i) {
-                      final tx = items[i];
-                      return _PaymentCard(
-                        tx: tx,
-                        money: _money,
-                        timeFmt: _time,
-                        dateFmt: _date,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  TransactionDetailScreen(transaction: tx),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+            child: _buildBody(
+              context,
+              r: r,
+              items: items,
+              pad: pad,
+              bottomInset: bottomInset,
+              useGridView: useGridView,
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context, {
+    required Responsive r,
+    required List<PaymentTransaction> items,
+    required double pad,
+    required double bottomInset,
+    required bool useGridView,
+  }) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(pad),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: PaxPaymentColors.mediumGray,
+                    ),
+              ),
+              const SizedBox(height: PaxPaymentSpacing.sp16),
+              FilledButton(
+                onPressed: _loadTransactions,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (items.isEmpty) {
+      return Center(
+        child: Text(
+          'No payments in this range.',
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: PaxPaymentColors.mediumGray,
+              ),
+        ),
+      );
+    }
+
+    final contentPadding = EdgeInsets.fromLTRB(
+      pad,
+      PaxPaymentSpacing.sp16,
+      pad,
+      pad + bottomInset + 72,
+    );
+
+    if (useGridView) {
+      final crossAxisCount = r.value(mobile: 2, tablet: 3);
+      const spacing = PaxPaymentSpacing.sp10;
+
+      return RefreshIndicator(
+        onRefresh: _loadTransactions,
+        child: GridView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: contentPadding,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: spacing,
+            crossAxisSpacing: spacing,
+            childAspectRatio: r.value(mobile: 0.95, tablet: 1.05),
+          ),
+          itemCount: items.length,
+          itemBuilder: (context, i) {
+            final tx = items[i];
+            return _PaymentGridTile(
+              tx: tx,
+              money: _money,
+              timeFmt: _time,
+              onTap: () => _openTransactionDetail(context, tx),
+            );
+          },
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadTransactions,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: contentPadding,
+        itemCount: items.length,
+        separatorBuilder: (context, index) =>
+            const SizedBox(height: PaxPaymentSpacing.sp10),
+        itemBuilder: (context, i) {
+          final tx = items[i];
+          return _PaymentCard(
+            tx: tx,
+            money: _money,
+            timeFmt: _time,
+            dateFmt: _date,
+            onTap: () => _openTransactionDetail(context, tx),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openTransactionDetail(BuildContext context, PaymentTransaction tx) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TransactionDetailScreen(transaction: tx),
       ),
     );
   }
@@ -301,6 +436,84 @@ class _StatusChip extends StatelessWidget {
                       ? PaxPaymentColors.primaryBlue
                       : PaxPaymentColors.darkGrayText,
                 ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PaymentGridTile extends StatelessWidget {
+  final PaymentTransaction tx;
+  final NumberFormat money;
+  final DateFormat timeFmt;
+  final VoidCallback onTap;
+
+  const _PaymentGridTile({
+    required this.tx,
+    required this.money,
+    required this.timeFmt,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(PaxPaymentSpacing.radiusLg);
+    return Material(
+      color: PaxPaymentColors.white,
+      borderRadius: radius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Container(
+          padding: const EdgeInsets.all(PaxPaymentSpacing.sp12),
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      money.format(tx.amount),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: PaxPaymentColors.darkGrayText,
+                          ),
+                    ),
+                  ),
+                  PaymentStatusBadge(
+                    status: tx.status,
+                    compact: true,
+                    isRefund: tx.isRefund,
+                    isRefunded: tx.isRefunded,
+                  ),
+                ],
+              ),
+              const Spacer(),
+              Text(
+                tx.customerName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: PaxPaymentColors.darkGrayText,
+                    ),
+              ),
+              const SizedBox(height: PaxPaymentSpacing.sp4),
+              Text(
+                timeFmt.format(tx.time),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: PaxPaymentColors.mediumGray,
+                    ),
+              ),
+            ],
           ),
         ),
       ),

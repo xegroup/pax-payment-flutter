@@ -42,9 +42,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  void _handleLoginResponse(LoginResponse response) {
+  Future<void> _handleLoginResponse(LoginResponse response) async {
     if (response.isSuccess) {
-      MyApiClient.setAuthToken(response.token.trim());
+      await MyApiClient.persistAuthToken(response.token.trim());
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(CheckoutPaymentScreen.materialRoute());
       return;
     }

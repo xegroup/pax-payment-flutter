@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:pax_payment/features/menu/checkout_payment_screen.dart';
 
 import '../shared/theme/pax_text_styles.dart';
-import 'payment_method_screen.dart';
+import 'payment_flow_helpers.dart';
 import 'payment_navigation.dart';
 import 'teya_ui.dart';
 
 /// Card payment declined.
-class PaymentDeclinedScreen extends StatelessWidget {
+class PaymentDeclinedScreen extends StatefulWidget {
   const PaymentDeclinedScreen({
     super.key,
     required this.amount,
@@ -20,9 +19,33 @@ class PaymentDeclinedScreen extends StatelessWidget {
   final bool popWithResult;
 
   @override
+  State<PaymentDeclinedScreen> createState() => _PaymentDeclinedScreenState();
+}
+
+class _PaymentDeclinedScreenState extends State<PaymentDeclinedScreen> {
+  bool _isProcessing = false;
+
+  Future<void> _startCardPayment() async {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+    try {
+      await startCardPaymentFlow(
+        context,
+        amount: widget.amount,
+        popWithResult: widget.popWithResult,
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final reason = declineReason?.trim().isNotEmpty == true
-        ? declineReason!.trim()
+    final reason = widget.declineReason?.trim().isNotEmpty == true
+        ? widget.declineReason!.trim()
         : 'Payment could not be processed';
 
     return PopScope(
@@ -55,26 +78,21 @@ class PaymentDeclinedScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              TeyaUi.formatAmount(amount),
+              TeyaUi.formatAmount(widget.amount),
               textAlign: TextAlign.center,
               style: PaxTextStyles.amountMd.copyWith(color: TeyaColors.textDark),
             ),
             const TeyaDivider(),
             TeyaPrimaryButton(
-              label: 'Try again',
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute<void>(
-                    builder: (_) => CheckoutPaymentScreen(),
-                  ),
-                );
-              },
+              label: _isProcessing ? 'Processing…' : 'Try again',
+              onPressed: _isProcessing ? null : _startCardPayment,
             ),
             const SizedBox(height: 12),
             TeyaSecondaryButton(
               label: 'Cancel',
               onPressed: () {
-                if (popWithResult) {
+                if (_isProcessing) return;
+                if (widget.popWithResult) {
                   Navigator.of(context).pop(false);
                 } else {
                   navigateToCheckout(context);

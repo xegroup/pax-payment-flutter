@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../core/di/injection.dart';
 import '../core/database/local_storage.dart';
-import '../core/services/payment_service.dart';
-import '../features/menu/models/payment_transaction.dart';
 import '../shared/theme/pax_text_styles.dart';
 import 'cash_payment_screen.dart';
 import 'payment_flow_helpers.dart';
-import 'payment_navigation.dart';
 import 'teya_ui.dart';
 
 enum PaymentMethodChoice { card, cash }
@@ -30,7 +27,6 @@ class PaymentMethodScreen extends StatefulWidget {
 }
 
 class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
-  final _paymentService = PaymentService();
   PaymentMethodChoice _choice = PaymentMethodChoice.card;
   bool _isProcessing = false;
   late final bool _cashEnabled = sl<LocalStorage>().cashEnabled;
@@ -59,71 +55,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
   Future<void> _startCardPayment() async {
     setState(() => _isProcessing = true);
-
     try {
-      final result = await _paymentService.startPayment(
-        amount: (widget.totalAmount * 100).round(),
-        title: 'Payment',
-        paymentMethod: 'card',
+      await startCardPaymentFlow(
+        context,
+        amount: widget.totalAmount,
+        popWithResult: widget.completeWithPopResult,
       );
-
-      if (!mounted) return;
-
-      final status = parsePaymentStatus(result);
-      if (status == null) {
-        _showMessage('Payment cancelled');
-        return;
-      }
-
-      final nativeId = result['transactionId']?.toString().trim();
-      final transactionId = (nativeId != null && nativeId.isNotEmpty)
-          ? nativeId
-          : generateTransactionId();
-      final last4 = extractCardLast4(result['cardNumber']);
-      final cardType = parseCardType(result);
-      final evoRef = nativeId?.isNotEmpty == true ? nativeId : null;
-
-      if (status == PaymentStatus.success) {
-        await saveCardTransaction(
-          amount: widget.totalAmount,
-          status: PaymentStatus.success,
-          transactionId: transactionId,
-          cardLast4: last4,
-          cardType: cardType,
-          evoTransactionRef: evoRef,
-        );
-        if (!mounted) return;
-        navigateToPaymentSuccess(
-          context,
-          amount: widget.totalAmount,
-          cardLast4: last4,
-          cardType: cardType,
-          transactionId: transactionId,
-          popWithResult: widget.completeWithPopResult,
-        );
-      } else {
-        await saveCardTransaction(
-          amount: widget.totalAmount,
-          status: PaymentStatus.failed,
-          transactionId: transactionId,
-          cardLast4: last4,
-          cardType: cardType,
-          evoTransactionRef: evoRef,
-        );
-        if (!mounted) return;
-        navigateToPaymentDeclined(
-          context,
-          amount: widget.totalAmount,
-          declineReason: parseDeclineReason(result),
-          popWithResult: widget.completeWithPopResult,
-        );
-      }
-    } on PaymentServiceException catch (e) {
-      if (!mounted) return;
-      _showMessage(e.message);
-    } catch (_) {
-      if (!mounted) return;
-      _showMessage('Payment could not be processed');
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);

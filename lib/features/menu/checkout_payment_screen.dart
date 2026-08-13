@@ -7,10 +7,8 @@ import 'package:intl/intl.dart';
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
 import '../../screens/payment_flow_helpers.dart';
-import '../../screens/payment_navigation.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
-import '../../screens/payment_method_screen.dart';
 import '../../screens/split_payment_flow.dart';
 import '../../screens/tip_screen.dart';
 import '../../shared/widgets/pax_pos_app_bar.dart';
@@ -97,14 +95,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     }
   }
 
-  List<CheckoutPaymentMethod> _paymentMethodsForUi() {
-    final cashOn = sl<LocalStorage>().cashEnabled;
-    return CheckoutPaymentMethod.values.where((m) {
-      if (m == CheckoutPaymentMethod.cash) return cashOn;
-      return true;
-    }).toList();
-  }
-
   @override
   void dispose() {
     _customTipCtrl.dispose();
@@ -161,22 +151,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           ),
         );
       },
-      trailing: [
-        if (isAmount)
-          PopupMenuButton<CheckoutPaymentMethod>(
-            tooltip: 'Payment method',
-            icon: Icon(
-              Icons.payments_outlined,
-              color: PaxPaymentColors.darkGrayText.withValues(alpha: 0.85),
-            ),
-            onSelected: (m) => setState(() => _method = m),
-            itemBuilder: (ctx) => _paymentMethodsForUi()
-                .map(
-                  (m) => PopupMenuItem(value: m, child: Text(_methodLabel(m))),
-                )
-                .toList(),
-          ),
-      ],
     );
   }
 
@@ -487,11 +461,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     } else {
       totalAmount = parsed;
       await _startCardPayment();
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => PaymentMethodScreen(totalAmount: parsed),
-        ),
-      );
     }
   }
   void _showMessage(String message) {
@@ -509,71 +478,12 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   }
   Future<void> _startCardPayment() async {
     setState(() => _isProcessing = true);
-
     try {
-      final result = await _paymentService.startPayment(
-        amount: (totalAmount * 100).round(),
-        title: 'Payment',
-        paymentMethod: 'card',
+      await startCardPaymentFlow(
+        context,
+        amount: totalAmount,
+        popWithResult: completeWithPopResult,
       );
-
-      if (!mounted) return;
-
-      final status = parsePaymentStatus(result);
-      if (status == null) {
-        _showMessage('Payment cancelled');
-        return;
-      }
-
-      final nativeId = result['transactionId']?.toString().trim();
-      final transactionId = (nativeId != null && nativeId.isNotEmpty)
-          ? nativeId
-          : generateTransactionId();
-      final last4 = extractCardLast4(result['cardNumber']);
-      final cardType = parseCardType(result);
-      final evoRef = nativeId?.isNotEmpty == true ? nativeId : null;
-
-      if (status == PaymentStatus.success) {
-        await saveCardTransaction(
-          amount: totalAmount,
-          status: PaymentStatus.success,
-          transactionId: transactionId,
-          cardLast4: last4,
-          cardType: cardType,
-          evoTransactionRef: evoRef,
-        );
-        if (!mounted) return;
-        navigateToPaymentSuccess(
-          context,
-          amount: totalAmount,
-          cardLast4: last4,
-          cardType: cardType,
-          transactionId: transactionId,
-          popWithResult: completeWithPopResult,
-        );
-      } else {
-        await saveCardTransaction(
-          amount: totalAmount,
-          status: PaymentStatus.failed,
-          transactionId: transactionId,
-          cardLast4: last4,
-          cardType: cardType,
-          evoTransactionRef: evoRef,
-        );
-        if (!mounted) return;
-        navigateToPaymentDeclined(
-          context,
-          amount: totalAmount,
-          declineReason: parseDeclineReason(result),
-          popWithResult: completeWithPopResult,
-        );
-      }
-    } on PaymentServiceException catch (e) {
-      if (!mounted) return;
-      _showMessage(e.message);
-    } catch (_) {
-      if (!mounted) return;
-      _showMessage('Payment could not be processed');
     } finally {
       if (mounted) {
         setState(() => _isProcessing = false);

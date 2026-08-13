@@ -1,9 +1,13 @@
 import 'dart:math';
 
+import 'package:flutter/material.dart';
+
 import '../core/di/injection.dart';
 import '../core/database/local_storage.dart';
+import '../core/services/payment_service.dart';
 import '../features/menu/data/dummy_payments_data.dart';
 import '../features/menu/models/payment_transaction.dart';
+import 'payment_navigation.dart';
 
 /// TXN- + 8 random uppercase alphanumeric characters.
 String generateTransactionId() {
@@ -92,3 +96,92 @@ Future<PaymentTransaction> saveCashTransaction({
 }
 
 double roundMoney(double v) => double.parse(v.toStringAsFixed(2));
+
+Future<void> startCardPaymentFlow(
+  BuildContext context, {
+  required double amount,
+  bool popWithResult = false,
+}) async {
+  final paymentService = PaymentService();
+
+  try {
+    final result = await paymentService.startPayment(
+      amount: (amount * 100).round(),
+      title: 'Payment',
+      paymentMethod: 'card',
+    );
+
+    if (!context.mounted) return;
+
+    final status = parsePaymentStatus(result);
+    if (status == null) {
+      navigateToPaymentDeclined(
+        context,
+        amount: amount,
+        declineReason: 'Payment cancelled',
+        popWithResult: popWithResult,
+      );
+      return;
+    }
+
+    final nativeId = result['transactionId']?.toString().trim();
+    final transactionId = (nativeId != null && nativeId.isNotEmpty)
+        ? nativeId
+        : generateTransactionId();
+    final last4 = extractCardLast4(result['cardNumber']);
+    final cardType = parseCardType(result);
+    final evoRef = nativeId?.isNotEmpty == true ? nativeId : null;
+
+    if (status == PaymentStatus.success) {
+      await saveCardTransaction(
+        amount: amount,
+        status: PaymentStatus.success,
+        transactionId: transactionId,
+        cardLast4: last4,
+        cardType: cardType,
+        evoTransactionRef: evoRef,
+      );
+      if (!context.mounted) return;
+      navigateToPaymentSuccess(
+        context,
+        amount: amount,
+        cardLast4: last4,
+        cardType: cardType,
+        transactionId: transactionId,
+        popWithResult: popWithResult,
+      );
+    } else {
+      await saveCardTransaction(
+        amount: amount,
+        status: PaymentStatus.failed,
+        transactionId: transactionId,
+        cardLast4: last4,
+        cardType: cardType,
+        evoTransactionRef: evoRef,
+      );
+      if (!context.mounted) return;
+      navigateToPaymentDeclined(
+        context,
+        amount: amount,
+        declineReason: parseDeclineReason(result),
+        popWithResult: popWithResult,
+      );
+    }
+  } on PaymentServiceException catch (e) {
+    if (!context.mounted) return;
+    navigateToPaymentDeclined(
+      context,
+      amount: amount,
+      declineReason: e.message,
+      popWithResult: popWithResult,
+    );
+  } catch (_) {
+    if (!context.mounted) return;
+    navigateToPaymentDeclined(
+      context,
+      amount: amount,
+      declineReason: 'Payment could not be processed',
+      popWithResult: popWithResult,
+    );
+  }
+}

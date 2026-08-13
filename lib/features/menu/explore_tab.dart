@@ -212,7 +212,7 @@ class ExploreTab extends StatelessWidget {
       ),
     );
     if (yes == true && context.mounted) {
-      MyApiClient.clearAuthToken();
+      await MyApiClient.clearAuthToken();
       if (!context.mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const LoginScreen()),

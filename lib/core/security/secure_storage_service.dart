@@ -25,6 +25,7 @@ class SecureStorageService {
 
   static const String loginPasswordKey = 'secure_login_password';
   static const String managerPinKey = 'secure_manager_pin';
+  static const String authTokenKey = 'secure_auth_token';
 
   Future<String?> read(String key) async {
     if (_memory != null) return _memory[key];
@@ -63,6 +64,12 @@ class SecureStorageService {
   Future<String?> getManagerPin() => read(managerPinKey);
 
   Future<void> setManagerPin(String value) => write(managerPinKey, value);
+
+  Future<String?> getAuthToken() => read(authTokenKey);
+
+  Future<void> setAuthToken(String value) => write(authTokenKey, value);
+
+  Future<void> clearAuthToken() => delete(authTokenKey);
 
   Future<bool> hasLoginPassword() async {
     final v = await getLoginPassword();
