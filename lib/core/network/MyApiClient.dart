@@ -7,6 +7,7 @@ import '../di/injection.dart';
 import '../security/secure_storage_service.dart';
 import '../services/api_service.dart';
 import 'AuthInterceptor.dart';
+import '../auth/auth_session.dart';
 
 class MyApiClient {
   static ApiService? _apiService;
@@ -39,7 +40,13 @@ class MyApiClient {
       ),
     );
 
-    _authInterceptor = AuthInterceptor(authToken: initialAuthToken);
+    _authInterceptor = AuthInterceptor(
+      authToken: initialAuthToken,
+      onUnauthorized: ({message}) => AuthSession.handleUnauthorized(
+        clearToken: clearAuthToken,
+        message: message,
+      ),
+    );
     _dio!.interceptors.add(_authInterceptor!);
     _dio!.interceptors.add(
       LogInterceptor(

@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app_route_observer.dart';
+import 'core/auth/auth_session.dart';
 import 'core/config/app_flags.dart';
 import 'core/di/injection.dart';
 import 'features/auth/splash_screen.dart';
@@ -53,6 +54,7 @@ class PaxPaymentApp extends StatelessWidget {
       builder: (context, _) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
+          navigatorKey: AuthSession.navigatorKey,
           navigatorObservers: [appRouteObserver],
           theme: appThemeService.lightTheme,
           darkTheme: appThemeService.darkTheme,

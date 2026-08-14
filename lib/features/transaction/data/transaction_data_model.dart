@@ -69,6 +69,7 @@ class TransactionDataModel {
       cardLast4: _nullableString(cardLast4),
       evoTransactionRef: _nullableString(evoTransactionRef),
       storeTag: storeTag,
+      isoTime: time,
     );
   }
 

@@ -22,6 +22,9 @@ class PaymentTransaction {
   /// Store / site tag for multi-store filtering.
   final String storeTag;
 
+  /// Original API time string, e.g. `2026-08-14T17:24:07+01:00`.
+  final String? isoTime;
+
   const PaymentTransaction({
     required this.id,
     required this.amount,
@@ -36,6 +39,7 @@ class PaymentTransaction {
     this.cardLast4,
     this.evoTransactionRef,
     this.storeTag = '',
+    this.isoTime,
   });
 
   /// Reference to send to native refund (EVO); falls back to [id].
@@ -73,6 +77,7 @@ class PaymentTransaction {
       cardLast4: cardLast4,
       evoTransactionRef: evoTransactionRef,
       storeTag: storeTag,
+      isoTime: isoTime,
     );
   }
 
@@ -97,6 +102,7 @@ class PaymentTransaction {
       cardLast4: json['cardLast4']?.toString(),
       evoTransactionRef: json['evoTransactionRef']?.toString(),
       storeTag: (json['storeTag'] ?? '').toString(),
+      isoTime: json['time']?.toString(),
     );
   }
 
@@ -105,7 +111,7 @@ class PaymentTransaction {
       'id': id,
       'amount': amount,
       'status': status.name,
-      'time': time.toIso8601String(),
+      'time': isoTime ?? time.toIso8601String(),
       'customerName': customerName,
       'cardType': cardType,
       'refundSupported': refundSupported,

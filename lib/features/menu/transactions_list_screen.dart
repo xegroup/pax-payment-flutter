@@ -108,7 +108,6 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     );
     final items = _items;
     final bottomInset = MediaQuery.paddingOf(context).bottom;
-    final useGridView = false;
 
     return Scaffold(
       backgroundColor: PaxPaymentColors.adminBackground,
@@ -234,11 +233,9 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
           Expanded(
             child: _buildBody(
               context,
-              r: r,
               items: items,
               pad: pad,
               bottomInset: bottomInset,
-              useGridView: useGridView,
             ),
           ),
         ],
@@ -248,11 +245,9 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
 
   Widget _buildBody(
     BuildContext context, {
-    required Responsive r,
     required List<PaymentTransaction> items,
     required double pad,
     required double bottomInset,
-    required bool useGridView,
   }) {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -301,35 +296,6 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
       pad + bottomInset + 72,
     );
 
-    if (useGridView) {
-      final crossAxisCount = r.value(mobile: 2, tablet: 3);
-      const spacing = PaxPaymentSpacing.sp10;
-
-      return RefreshIndicator(
-        onRefresh: _loadTransactions,
-        child: GridView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: contentPadding,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            mainAxisSpacing: spacing,
-            crossAxisSpacing: spacing,
-            childAspectRatio: r.value(mobile: 0.95, tablet: 1.05),
-          ),
-          itemCount: items.length,
-          itemBuilder: (context, i) {
-            final tx = items[i];
-            return _PaymentGridTile(
-              tx: tx,
-              money: _money,
-              timeFmt: _time,
-              onTap: () => _openTransactionDetail(context, tx),
-            );
-          },
-        ),
-      );
-    }
-
     return RefreshIndicator(
       onRefresh: _loadTransactions,
       child: ListView.separated(
@@ -340,11 +306,11 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             const SizedBox(height: PaxPaymentSpacing.sp10),
         itemBuilder: (context, i) {
           final tx = items[i];
-          return _PaymentCard(
+          return _PaymentGridTile(
             tx: tx,
             money: _money,
-            timeFmt: _time,
             dateFmt: _date,
+            timeFmt: _time,
             onTap: () => _openTransactionDetail(context, tx),
           );
         },
@@ -446,12 +412,14 @@ class _StatusChip extends StatelessWidget {
 class _PaymentGridTile extends StatelessWidget {
   final PaymentTransaction tx;
   final NumberFormat money;
+  final DateFormat dateFmt;
   final DateFormat timeFmt;
   final VoidCallback onTap;
 
   const _PaymentGridTile({
     required this.tx,
     required this.money,
+    required this.dateFmt,
     required this.timeFmt,
     required this.onTap,
   });
@@ -496,88 +464,12 @@ class _PaymentGridTile extends StatelessWidget {
                   ),
                 ],
               ),
-              const Spacer(),
+              const SizedBox(height: PaxPaymentSpacing.sp10),
               Text(
                 tx.customerName,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: PaxPaymentColors.darkGrayText,
-                    ),
-              ),
-              const SizedBox(height: PaxPaymentSpacing.sp4),
-              Text(
-                timeFmt.format(tx.time),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: PaxPaymentColors.mediumGray,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PaymentCard extends StatelessWidget {
-  final PaymentTransaction tx;
-  final NumberFormat money;
-  final DateFormat timeFmt;
-  final DateFormat dateFmt;
-  final VoidCallback onTap;
-
-  const _PaymentCard({
-    required this.tx,
-    required this.money,
-    required this.timeFmt,
-    required this.dateFmt,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(PaxPaymentSpacing.radiusXl);
-    return Material(
-      color: PaxPaymentColors.white,
-      borderRadius: radius,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: radius,
-        child: Container(
-          padding: const EdgeInsets.all(PaxPaymentSpacing.sp16),
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      money.format(tx.amount),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: PaxPaymentColors.darkGrayText,
-                          ),
-                    ),
-                  ),
-                  PaymentStatusBadge(
-                    status: tx.status,
-                    compact: true,
-                    isRefund: tx.isRefund,
-                    isRefunded: tx.isRefunded,
-                  ),
-                ],
-              ),
-              const SizedBox(height: PaxPaymentSpacing.sp10),
-              Text(
-                tx.customerName,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: PaxPaymentColors.darkGrayText,
                     ),

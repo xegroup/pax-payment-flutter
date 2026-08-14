@@ -1,11 +1,14 @@
+import 'package:dio/dio.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/network/MyApiClient.dart';
 import '../../shared/responsive/responsive.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import 'data/dummy_payments_data.dart';
+import 'models/payment_transaction.dart';
 
 enum _ReportRangePreset { last7, last30, thisMonth }
 
@@ -20,9 +23,50 @@ class ReportsAnalyticsScreen extends StatefulWidget {
 class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
   _ReportRangePreset _preset = _ReportRangePreset.last7;
 
+  List<PaymentTransaction> _transactions = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
   static final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
   static final _compact = NumberFormat('#,##0.00');
   static final _axisDay = DateFormat('d MMM');
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
+  }
+
+  Future<void> _loadTransactions() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await MyApiClient.getAllTransactions();
+      if (!mounted) return;
+      setState(() {
+        _transactions = response.data
+            .map((r) => r.toPaymentTransaction())
+            .toList()
+          ..sort((a, b) => b.time.compareTo(a.time));
+        _isLoading = false;
+      });
+    } on DioException catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Unable to load sales data. Please try again.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Unable to load sales data. Please try again.';
+      });
+    }
+  }
 
   (DateTime, DateTime) get _range {
     final now = DateTime.now();
@@ -47,10 +91,68 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
       tabletLandscape: PaxPaymentSpacing.sp24,
     );
 
+    return Scaffold(
+      backgroundColor: PaxPaymentColors.adminBackground,
+      appBar: AppBar(
+        title: const Text('Reports & analytics'),
+        backgroundColor: PaxPaymentColors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: PaxPaymentColors.darkGrayText,
+        actions: [
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _isLoading ? null : _loadTransactions,
+            icon: const Icon(Icons.refresh_rounded),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(pad),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: PaxPaymentColors.mediumGray,
+                              ),
+                        ),
+                        const SizedBox(height: PaxPaymentSpacing.sp16),
+                        FilledButton(
+                          onPressed: _loadTransactions,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : _buildContent(context, r, pad),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, Responsive r, double pad) {
     final (start, end) = _range;
-    final s = DummyPaymentsData.summary(start, end);
-    final daily = DummyPaymentsData.dailyBars(start, end);
-    final cumulative = DummyPaymentsData.cumulativeSeries(start, end);
+    final s = DummyPaymentsData.summary(
+      start,
+      end,
+      source: _transactions,
+    );
+    final daily = DummyPaymentsData.dailyBars(
+      start,
+      end,
+      source: _transactions,
+    );
+    final cumulative = DummyPaymentsData.cumulativeSeries(
+      start,
+      end,
+      source: _transactions,
+    );
 
     final lineSpots = <FlSpot>[
       for (var i = 0; i < cumulative.length; i++)
@@ -83,16 +185,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
         ),
     ];
 
-    return Scaffold(
-      backgroundColor: PaxPaymentColors.adminBackground,
-      appBar: AppBar(
-        title: const Text('Reports & analytics'),
-        backgroundColor: PaxPaymentColors.white,
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: PaxPaymentColors.darkGrayText,
-      ),
-      body: ListView(
+    return ListView(
         padding: EdgeInsets.fromLTRB(
           pad,
           PaxPaymentSpacing.sp16,
@@ -337,7 +430,6 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                   ),
           ),
         ],
-      ),
     );
   }
 }

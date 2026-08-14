@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../core/di/injection.dart';
 import '../../core/network/MyApiClient.dart';
-import '../../core/security/secure_storage_service.dart';
 import '../../shared/responsive/responsive.dart';
-import '../menu/checkout_payment_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -23,16 +20,9 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _routeNext() async {
     MyApiClient.init('https://api-app.xepay.co.uk/');
-    await MyApiClient.loadPersistedAuthToken();
 
     await Future<void>.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-
-    final token = await sl<SecureStorageService>().getAuthToken();
-    if (token != null && token.isNotEmpty) {
-      Navigator.of(context).pushReplacement(CheckoutPaymentScreen.materialRoute());
-      return;
-    }
 
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(builder: (_) => const LoginScreen()),

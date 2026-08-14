@@ -101,6 +101,7 @@ Future<void> startCardPaymentFlow(
   BuildContext context, {
   required double amount,
   bool popWithResult = false,
+  Future<void> Function(PaymentTransaction transaction)? onTransactionSaved,
 }) async {
   final paymentService = PaymentService();
 
@@ -133,7 +134,7 @@ Future<void> startCardPaymentFlow(
     final evoRef = nativeId?.isNotEmpty == true ? nativeId : null;
 
     if (status == PaymentStatus.success) {
-      await saveCardTransaction(
+      final tx = await saveCardTransaction(
         amount: amount,
         status: PaymentStatus.success,
         transactionId: transactionId,
@@ -141,6 +142,7 @@ Future<void> startCardPaymentFlow(
         cardType: cardType,
         evoTransactionRef: evoRef,
       );
+      await onTransactionSaved?.call(tx);
       if (!context.mounted) return;
       navigateToPaymentSuccess(
         context,
@@ -151,7 +153,7 @@ Future<void> startCardPaymentFlow(
         popWithResult: popWithResult,
       );
     } else {
-      await saveCardTransaction(
+      final tx = await saveCardTransaction(
         amount: amount,
         status: PaymentStatus.failed,
         transactionId: transactionId,
@@ -159,6 +161,7 @@ Future<void> startCardPaymentFlow(
         cardType: cardType,
         evoTransactionRef: evoRef,
       );
+      await onTransactionSaved?.call(tx);
       if (!context.mounted) return;
       navigateToPaymentDeclined(
         context,

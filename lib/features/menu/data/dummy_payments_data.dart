@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/payment_transaction.dart';
+import '../../transaction/data/transaction_time_utils.dart';
 
 /// Period filter for payments list.
 enum PaymentsPeriodFilter { today, week, month }
@@ -113,8 +114,8 @@ class DummyPaymentsData {
     required PaymentsPeriodFilter period,
     required PaymentsStatusFilter status,
   }) {
-    final start = _periodStart(period);
-    var list = source.where((e) => !e.time.isBefore(start)).toList();
+    var list =
+        source.where((e) => _matchesPeriod(e, period)).toList();
     switch (status) {
       case PaymentsStatusFilter.all:
         break;
@@ -132,15 +133,27 @@ class DummyPaymentsData {
     return list;
   }
 
-  static DateTime _periodStart(PaymentsPeriodFilter p) {
-    final n = DateTime.now();
-    switch (p) {
+  static bool _matchesPeriod(
+    PaymentTransaction transaction,
+    PaymentsPeriodFilter period,
+  ) {
+    final txDate = TransactionTimeUtils.calendarDateForTransaction(transaction);
+    final today =
+        TransactionTimeUtils.todayForOffset(
+          TransactionTimeUtils.offsetForTransaction(transaction),
+        );
+
+    switch (period) {
       case PaymentsPeriodFilter.today:
-        return DateTime(n.year, n.month, n.day);
+        return txDate.year == today.year &&
+            txDate.month == today.month &&
+            txDate.day == today.day;
       case PaymentsPeriodFilter.week:
-        return n.subtract(const Duration(days: 7));
+        final start = today.subtract(const Duration(days: 7));
+        return !txDate.isBefore(start);
       case PaymentsPeriodFilter.month:
-        return n.subtract(const Duration(days: 30));
+        final start = today.subtract(const Duration(days: 30));
+        return !txDate.isBefore(start);
     }
   }
 
@@ -149,9 +162,11 @@ class DummyPaymentsData {
     DateTime start,
     DateTime end, {
     String? storeFilter,
+    List<PaymentTransaction>? source,
   }) {
+    final data = source ?? all;
     final endDay = DateTime(end.year, end.month, end.day, 23, 59, 59);
-    var list = all
+    var list = data
         .where((e) => !e.time.isBefore(start) && !e.time.isAfter(endDay))
         .toList();
     if (storeFilter != null && storeFilter.isNotEmpty) {
@@ -193,8 +208,14 @@ class DummyPaymentsData {
     DateTime rangeStart,
     DateTime rangeEnd, {
     String? storeFilter,
+    List<PaymentTransaction>? source,
   }) {
-    final totals = dailyTotals(rangeStart, rangeEnd, storeFilter: storeFilter);
+    final totals = dailyTotals(
+      rangeStart,
+      rangeEnd,
+      storeFilter: storeFilter,
+      source: source,
+    );
     final start = DateTime(rangeStart.year, rangeStart.month, rangeStart.day);
     final end = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
     final out = <(DateTime, double)>[];
@@ -210,8 +231,14 @@ class DummyPaymentsData {
     DateTime rangeStart,
     DateTime rangeEnd, {
     String? storeFilter,
+    List<PaymentTransaction>? source,
   }) {
-    final bars = dailyBars(rangeStart, rangeEnd, storeFilter: storeFilter);
+    final bars = dailyBars(
+      rangeStart,
+      rangeEnd,
+      storeFilter: storeFilter,
+      source: source,
+    );
     var run = 0.0;
     return bars.map((e) {
       run += e.$2;
@@ -224,8 +251,14 @@ class DummyPaymentsData {
     DateTime rangeStart,
     DateTime rangeEnd, {
     String? storeFilter,
+    List<PaymentTransaction>? source,
   }) {
-    final txs = inRange(rangeStart, rangeEnd, storeFilter: storeFilter);
+    final txs = inRange(
+      rangeStart,
+      rangeEnd,
+      storeFilter: storeFilter,
+      source: source,
+    );
     final map = <DateTime, double>{};
     for (final t in txs) {
       final d = DateTime(t.time.year, t.time.month, t.time.day);
@@ -238,9 +271,14 @@ class DummyPaymentsData {
     DateTime rangeStart,
     DateTime rangeEnd, {
     String? storeFilter,
+    List<PaymentTransaction>? source,
   }) {
-    final txs = inRange(rangeStart, rangeEnd, storeFilter: storeFilter)
-        .where((e) => e.status == PaymentStatus.success);
+    final txs = inRange(
+      rangeStart,
+      rangeEnd,
+      storeFilter: storeFilter,
+      source: source,
+    ).where((e) => e.status == PaymentStatus.success);
     final list = txs.toList();
     final total = list.fold<double>(0, (s, e) => s + e.amount);
     final count = list.length;
