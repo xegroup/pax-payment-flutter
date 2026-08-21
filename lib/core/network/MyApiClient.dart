@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../features/auth/data/login_response.dart';
+import '../../features/transaction/data/transaction_request.dart';
 import '../../features/transaction/data/transaction_response.dart';
 import '../../features/transaction/data/transactions_list_response.dart';
 import '../di/injection.dart';
@@ -36,6 +37,10 @@ class MyApiClient {
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         sendTimeout: const Duration(seconds: 30),
+        headers: const {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
         validateStatus: (status) => status != null && status < 500,
       ),
     );
@@ -100,7 +105,10 @@ class MyApiClient {
     return instance.signup(body);
   }
 
-  static Future<TransactionResponse> saveTransaction(Map<String, dynamic> body) {
+  static Future<TransactionResponse> saveTransaction(
+    TransactionRequest body,
+  ) async {
+    await loadPersistedAuthToken();
     return instance.saveTransaction(body);
   }
 

@@ -39,7 +39,7 @@ class DummyPaymentsData {
           );
       }
     }
-    all.sort((a, b) => b.time.compareTo(a.time));
+    all.sort((a, b) => _parsedTime(b.time).compareTo(_parsedTime(a.time)));
     _initialized = true;
   }
 
@@ -57,7 +57,7 @@ class DummyPaymentsData {
       await initialize();
     }
     all.add(transaction);
-    all.sort((a, b) => b.time.compareTo(a.time));
+    all.sort((a, b) => _parsedTime(b.time).compareTo(_parsedTime(a.time)));
     await _persist();
   }
 
@@ -114,8 +114,7 @@ class DummyPaymentsData {
     required PaymentsPeriodFilter period,
     required PaymentsStatusFilter status,
   }) {
-    var list =
-        source.where((e) => _matchesPeriod(e, period)).toList();
+    var list = source.where((e) => _matchesPeriod(e, period)).toList();
     switch (status) {
       case PaymentsStatusFilter.all:
         break;
@@ -137,11 +136,10 @@ class DummyPaymentsData {
     PaymentTransaction transaction,
     PaymentsPeriodFilter period,
   ) {
-    final txDate = TransactionTimeUtils.calendarDateForTransaction(transaction);
-    final today =
-        TransactionTimeUtils.todayForOffset(
-          TransactionTimeUtils.offsetForTransaction(transaction),
-        );
+    final txDate = _calendarDate(transaction.time);
+    final today = TransactionTimeUtils.todayForOffset(
+      _timeOffset(transaction.time),
+    );
 
     switch (period) {
       case PaymentsPeriodFilter.today:
@@ -166,9 +164,10 @@ class DummyPaymentsData {
   }) {
     final data = source ?? all;
     final endDay = DateTime(end.year, end.month, end.day, 23, 59, 59);
-    var list = data
-        .where((e) => !e.time.isBefore(start) && !e.time.isAfter(endDay))
-        .toList();
+    var list = data.where((e) {
+      final parsed = _parsedTime(e.time);
+      return !parsed.isBefore(start) && !parsed.isAfter(endDay);
+    }).toList();
     if (storeFilter != null && storeFilter.isNotEmpty) {
       list = list.where((e) => _storeMatches(e, storeFilter)).toList();
     }
@@ -191,7 +190,7 @@ class DummyPaymentsData {
         .subtract(Duration(days: maxDays - 1));
     final map = <DateTime, ({double net, int count})>{};
     for (final t in all) {
-      final d = DateTime(t.time.year, t.time.month, t.time.day);
+      final d = _calendarDate(t.time);
       if (d.isBefore(start)) continue;
       final cur = map[d] ?? (net: 0.0, count: 0);
       map[d] = (net: cur.net + t.amount, count: cur.count + 1);
@@ -261,7 +260,7 @@ class DummyPaymentsData {
     );
     final map = <DateTime, double>{};
     for (final t in txs) {
-      final d = DateTime(t.time.year, t.time.month, t.time.day);
+      final d = _calendarDate(t.time);
       map[d] = (map[d] ?? 0) + t.amount;
     }
     return map;
@@ -284,5 +283,30 @@ class DummyPaymentsData {
     final count = list.length;
     final avg = count == 0 ? 0.0 : total / count;
     return (total: total, count: count, avg: avg);
+  }
+
+  static DateTime _parsedTime(String time) {
+    final parsed = DateTime.tryParse(time.trim());
+    if (parsed != null) return parsed.toLocal();
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static DateTime _calendarDate(String time) {
+    final trimmed = time.trim();
+    if (trimmed.length >= 10 && trimmed[4] == '-' && trimmed[7] == '-') {
+      final year = int.tryParse(trimmed.substring(0, 4));
+      final month = int.tryParse(trimmed.substring(5, 7));
+      final day = int.tryParse(trimmed.substring(8, 10));
+      if (year != null && month != null && day != null) {
+        return DateTime(year, month, day);
+      }
+    }
+    final parsed = _parsedTime(trimmed);
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  static Duration _timeOffset(String time) {
+    return TransactionTimeUtils.parseIsoOffset(time) ??
+        DateTime.now().timeZoneOffset;
   }
 }

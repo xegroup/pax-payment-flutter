@@ -7,7 +7,7 @@ part 'transaction_data_model.g.dart';
 @JsonSerializable()
 class TransactionDataModel {
   final String id;
-  final int amount;
+  final double amount;
   final String status;
   final String time;
   final String customerName;
@@ -50,8 +50,6 @@ class TransactionDataModel {
     };
   }
 
-  DateTime get parsedTime => DateTime.tryParse(time) ?? DateTime.now();
-
   double get amountMajor => amount / 100;
 
   PaymentTransaction toPaymentTransaction() {
@@ -59,7 +57,7 @@ class TransactionDataModel {
       id: id,
       amount: amountMajor,
       status: paymentStatusFromApi(),
-      time: parsedTime,
+      time: time,
       customerName: customerName,
       cardType: cardType,
       refundSupported: refundSupported,
@@ -68,8 +66,7 @@ class TransactionDataModel {
       originalTransactionId: _nullableString(originalTransactionId),
       cardLast4: _nullableString(cardLast4),
       evoTransactionRef: _nullableString(evoTransactionRef),
-      storeTag: storeTag,
-      isoTime: time,
+      storeTag: storeTag
     );
   }
 

@@ -20,53 +20,27 @@ class TransactionTimeUtils {
     return null;
   }
 
-  /// Calendar date encoded in the API ISO string (`YYYY-MM-DD` segment).
-  static DateTime calendarDateFromIso(String iso) {
-    final trimmed = iso.trim();
-    if (trimmed.length >= 10 &&
-        trimmed[4] == '-' &&
-        trimmed[7] == '-') {
-      final year = int.tryParse(trimmed.substring(0, 4));
-      final month = int.tryParse(trimmed.substring(5, 7));
-      final day = int.tryParse(trimmed.substring(8, 10));
-      if (year != null && month != null && day != null) {
-        return DateTime(year, month, day);
-      }
-    }
-
-    final parsed = DateTime.tryParse(trimmed);
-    if (parsed == null) {
-      return _localCalendarDate(DateTime.now());
-    }
-
-    final offset = parsed.timeZoneOffset;
-    final zoned = parsed.toUtc().add(offset);
-    return DateTime(zoned.year, zoned.month, zoned.day);
-  }
-
   static DateTime todayForOffset(Duration offset) {
     final now = DateTime.now().toUtc().add(offset);
     return DateTime(now.year, now.month, now.day);
   }
 
-  static DateTime calendarDateForTransaction(PaymentTransaction tx) {
-    final raw = tx.isoTime?.trim();
-    if (raw != null && raw.isNotEmpty) {
-      return calendarDateFromIso(raw);
-    }
-    return _localCalendarDate(tx.time);
-  }
 
-  static Duration offsetForTransaction(PaymentTransaction tx) {
-    final raw = tx.isoTime?.trim();
-    if (raw != null && raw.isNotEmpty) {
-      return parseIsoOffset(raw) ?? DateTime.now().timeZoneOffset;
-    }
-    return DateTime.now().timeZoneOffset;
-  }
 
-  static DateTime _localCalendarDate(DateTime time) {
-    final local = time.toLocal();
-    return DateTime(local.year, local.month, local.day);
+
+  /// Formats timestamps for the API, e.g. `2026-08-14T17:24:07+01:00`.
+  static String formatApiDateTime(
+    DateTime time, {
+    Duration offset = const Duration(hours: 1),
+  }) {
+    final zoned = time.toUtc().add(offset);
+    String two(int v) => v.toString().padLeft(2, '0');
+    final sign = offset.isNegative ? '-' : '+';
+    final totalMinutes = offset.inMinutes.abs();
+    final hours = totalMinutes ~/ 60;
+    final minutes = totalMinutes % 60;
+    return '${zoned.year}-${two(zoned.month)}-${two(zoned.day)}T'
+        '${two(zoned.hour)}:${two(zoned.minute)}:${two(zoned.second)}'
+        '$sign${two(hours)}:${two(minutes)}';
   }
 }

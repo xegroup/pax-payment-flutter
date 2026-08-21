@@ -14,7 +14,7 @@ TransactionRequest _$TransactionRequestFromJson(Map<String, dynamic> json) =>
       time: json['time'] as String,
       customerName: json['customerName'] as String,
       cardType: json['cardType'] as String,
-      refundSupported: json['refundSupported'] as String,
+      refundSupported: json['refundSupported'] as bool,
       isRefund: json['isRefund'] as bool,
       isRefunded: json['isRefunded'] as bool,
       storeTag: json['storeTag'] as String,

@@ -29,8 +29,15 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   String? _errorMessage;
 
   static final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
-  static final _time = DateFormat('HH:mm');
-  static final _date = DateFormat('d MMM');
+  static final _dateTime = DateFormat('dd/MM/yyyy HH:mm', 'en_GB');
+
+  static String _formatTransactionTime(String time) {
+    final parsed = DateTime.tryParse(time.trim());
+    if (parsed != null) {
+      return _dateTime.format(parsed.toLocal());
+    }
+    return time;
+  }
 
   @override
   void initState() {
@@ -309,8 +316,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
           return _PaymentGridTile(
             tx: tx,
             money: _money,
-            dateFmt: _date,
-            timeFmt: _time,
+            formattedTime: _formatTransactionTime(tx.time),
             onTap: () => _openTransactionDetail(context, tx),
           );
         },
@@ -412,15 +418,13 @@ class _StatusChip extends StatelessWidget {
 class _PaymentGridTile extends StatelessWidget {
   final PaymentTransaction tx;
   final NumberFormat money;
-  final DateFormat dateFmt;
-  final DateFormat timeFmt;
+  final String formattedTime;
   final VoidCallback onTap;
 
   const _PaymentGridTile({
     required this.tx,
     required this.money,
-    required this.dateFmt,
-    required this.timeFmt,
+    required this.formattedTime,
     required this.onTap,
   });
 
@@ -476,7 +480,7 @@ class _PaymentGridTile extends StatelessWidget {
               ),
               const SizedBox(height: PaxPaymentSpacing.sp4),
               Text(
-                '${dateFmt.format(tx.time)} · ${timeFmt.format(tx.time)}',
+                formattedTime,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: PaxPaymentColors.mediumGray,
                     ),

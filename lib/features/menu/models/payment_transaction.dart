@@ -5,7 +5,7 @@ class PaymentTransaction {
   final String id;
   final double amount;
   final PaymentStatus status;
-  final DateTime time;
+  final String time;
   final String customerName;
   final String cardType;
   final bool refundSupported;
@@ -22,8 +22,6 @@ class PaymentTransaction {
   /// Store / site tag for multi-store filtering.
   final String storeTag;
 
-  /// Original API time string, e.g. `2026-08-14T17:24:07+01:00`.
-  final String? isoTime;
 
   const PaymentTransaction({
     required this.id,
@@ -38,8 +36,7 @@ class PaymentTransaction {
     this.originalTransactionId,
     this.cardLast4,
     this.evoTransactionRef,
-    this.storeTag = '',
-    this.isoTime,
+    this.storeTag = ''
   });
 
   /// Reference to send to native refund (EVO); falls back to [id].
@@ -76,8 +73,7 @@ class PaymentTransaction {
       originalTransactionId: originalTransactionId,
       cardLast4: cardLast4,
       evoTransactionRef: evoTransactionRef,
-      storeTag: storeTag,
-      isoTime: isoTime,
+      storeTag: storeTag
     );
   }
 
@@ -92,7 +88,7 @@ class PaymentTransaction {
       id: (json['id'] ?? '').toString(),
       amount: ((json['amount'] as num?) ?? 0).toDouble(),
       status: status,
-      time: DateTime.tryParse((json['time'] ?? '').toString()) ?? DateTime.now(),
+      time: (json['time'] ?? '').toString(),
       customerName: (json['customerName'] ?? 'Walk-in Customer').toString(),
       cardType: (json['cardType'] ?? 'Card').toString(),
       refundSupported: (json['refundSupported'] as bool?) ?? false,
@@ -101,8 +97,7 @@ class PaymentTransaction {
       originalTransactionId: json['originalTransactionId']?.toString(),
       cardLast4: json['cardLast4']?.toString(),
       evoTransactionRef: json['evoTransactionRef']?.toString(),
-      storeTag: (json['storeTag'] ?? '').toString(),
-      isoTime: json['time']?.toString(),
+      storeTag: (json['storeTag'] ?? '').toString()
     );
   }
 
@@ -111,7 +106,7 @@ class PaymentTransaction {
       'id': id,
       'amount': amount,
       'status': status.name,
-      'time': isoTime ?? time.toIso8601String(),
+      'time': time,
       'customerName': customerName,
       'cardType': cardType,
       'refundSupported': refundSupported,

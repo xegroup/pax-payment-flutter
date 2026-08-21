@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pax_payment/features/transaction/data/transaction_request.dart';
 import 'package:pax_payment/features/transaction/data/transaction_response.dart';
 import 'package:pax_payment/features/transaction/data/transactions_list_response.dart';
 import 'package:retrofit/dio.dart';
@@ -24,7 +25,7 @@ abstract class ApiService {
   @POST("api/app/transactions")
   @DioResponseType(ResponseType.plain)
   Future<TransactionResponse> saveTransaction(
-    @Body() Map<String, dynamic> body,
+    @Body() TransactionRequest body,
   );
 
   @GET("api/app/transactions")

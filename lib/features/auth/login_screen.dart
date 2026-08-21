@@ -31,7 +31,9 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _resetStoredSession());
+    if (widget.sessionMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _resetStoredSession());
+    }
   }
 
   Future<void> _resetStoredSession() async {

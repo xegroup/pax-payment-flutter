@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
-import '../../core/network/MyApiClient.dart';
 import '../../screens/payment_flow_helpers.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
@@ -15,7 +14,6 @@ import '../../screens/tip_screen.dart';
 import '../../shared/widgets/pax_pos_app_bar.dart';
 import '../../shared/widgets/pos_keypay_panel.dart';
 import '../../core/services/payment_service.dart';
-import 'data/dummy_payments_data.dart';
 import 'models/payment_transaction.dart';
 import 'terminal_menu_screen.dart';
 import 'transaction_detail_screen.dart';
@@ -227,10 +225,10 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               PaxPaymentSpacing.sp12 + bottom,
             ),
             child: PosKeypayPanel(
+              showOperatorColumn: false,
               onDigit: _onAmountDigit,
               onDelete: _onAmountDelete,
               onClear: _onAmountClear,
-              onOperatorTap: (_) {},
               footer: Material(
                 color: PaxPaymentColors.posKeypayAccent,
                 child: InkWell(
@@ -477,35 +475,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     final r = Random.secure();
     return 'TXN-${List.generate(8, (_) => chars[r.nextInt(chars.length)]).join()}';
   }
-  Future<void> _saveTransactionToApi(PaymentTransaction tx) async {
-    try {
-      await MyApiClient.loadPersistedAuthToken();
-      await MyApiClient.saveTransaction(_transactionApiBody(tx));
-    } catch (_) {
-      // Keep checkout flow moving if the remote save fails.
-    }
-  }
-
-  Map<String, dynamic> _transactionApiBody(PaymentTransaction tx) {
-    return {
-      'id': tx.id,
-      'amount': (tx.amount * 100).round(),
-      'status': tx.status.name,
-      'time': tx.time.toUtc().toIso8601String(),
-      'customerName': tx.customerName,
-      'cardType': tx.cardType,
-      'refundSupported': tx.refundSupported,
-      'isRefund': tx.isRefund,
-      'isRefunded': tx.isRefunded,
-      'originalTransactionId': tx.originalTransactionId,
-      'cardLast4': tx.cardLast4,
-      'evoTransactionRef': tx.evoTransactionRef,
-      'storeTag': tx.storeTag.isEmpty
-          ? DummyPaymentsData.defaultStoreTag
-          : tx.storeTag,
-    };
-  }
-
   Future<void> _startCardPayment() async {
     setState(() => _isProcessing = true);
     try {
@@ -513,7 +482,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
         context,
         amount: totalAmount,
         popWithResult: completeWithPopResult,
-        onTransactionSaved: _saveTransactionToApi,
       );
     } finally {
       if (mounted) {
@@ -984,7 +952,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           id: id,
           amount: chargeAmount,
           status: status,
-          time: DateTime.now(),
+          time: (result['date'] ?? DateTime.now().toIso8601String()).toString(),
           customerName: _basePayments.length > 1
               ? 'Split #${_currentPaymentIndex + 1}'
               : 'Walk-in Customer',
@@ -995,7 +963,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           evoTransactionRef: evoRef,
           storeTag: storeTag,
         );
-        await DummyPaymentsData.addTransaction(tx);
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

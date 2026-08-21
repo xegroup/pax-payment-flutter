@@ -40,7 +40,7 @@ class _CashSuccessScreenState extends State<CashSuccessScreen> {
         id: widget.transactionId,
         amount: widget.amount,
         status: PaymentStatus.success,
-        time: DateTime.now(),
+        time: DateTime.now().toString(),
         customerName: 'Walk-in Customer',
         cardType: 'Cash',
         refundSupported: false,

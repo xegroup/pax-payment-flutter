@@ -31,7 +31,7 @@ class PrinterService {
     return '''
     XEPOS
     -------------------------
-    Date: ${_ukDate.format(transaction.time)}
+    Date: ${transaction.time}
     Type: $type
     Amount: ${_money.format(transaction.amount.abs())}
     Card: $cardLine
