@@ -14,7 +14,6 @@ import '../../screens/tip_screen.dart';
 import '../../shared/widgets/pax_pos_app_bar.dart';
 import '../../shared/widgets/pos_keypay_panel.dart';
 import '../../core/services/payment_service.dart';
-import 'data/dummy_payments_data.dart';
 import 'models/payment_transaction.dart';
 import 'terminal_menu_screen.dart';
 import 'transaction_detail_screen.dart';
@@ -226,10 +225,10 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               PaxPaymentSpacing.sp12 + bottom,
             ),
             child: PosKeypayPanel(
+              showOperatorColumn: false,
               onDigit: _onAmountDigit,
               onDelete: _onAmountDelete,
               onClear: _onAmountClear,
-              onOperatorTap: (_) {},
               footer: Material(
                 color: PaxPaymentColors.posKeypayAccent,
                 child: InkWell(
@@ -953,7 +952,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           id: id,
           amount: chargeAmount,
           status: status,
-          time: DateTime.now(),
+          time: (result['date'] ?? DateTime.now().toIso8601String()).toString(),
           customerName: _basePayments.length > 1
               ? 'Split #${_currentPaymentIndex + 1}'
               : 'Walk-in Customer',
@@ -964,7 +963,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           evoTransactionRef: evoRef,
           storeTag: storeTag,
         );
-        await DummyPaymentsData.addTransaction(tx);
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

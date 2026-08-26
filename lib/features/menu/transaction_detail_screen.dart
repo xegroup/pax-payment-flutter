@@ -75,7 +75,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp12),
-          _DetailRow(label: 'Date', value: _full.format(t.time)),
+          _DetailRow(label: 'Date', value:t.time),
           _DetailRow(
             label: 'Card',
             value: '${t.cardType} ${t.maskedLast4Display}',
@@ -194,21 +194,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           statusValue == 'completed' ||
           statusValue == 'true';
       if (success) {
-        final refund = PaymentTransaction(
-          id: (result['transactionId'] ??
-                  result['refundTransactionId'] ??
-                  'RFND-${DateTime.now().millisecondsSinceEpoch}')
-              .toString(),
-          amount: -widget.transaction.amount,
-          status: PaymentStatus.success,
-          time: DateTime.now(),
-          customerName: 'Refund for ${widget.transaction.id}',
-          cardType: widget.transaction.cardType,
-          refundSupported: false,
-          isRefund: true,
-          originalTransactionId: widget.transaction.id,
-        );
-        await DummyPaymentsData.addTransaction(refund);
         await DummyPaymentsData.markTransactionRefunded(widget.transaction.id);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

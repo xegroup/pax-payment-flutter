@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../../features/transaction/data/transaction_save_service.dart';
+
 /// Thrown when a payment cannot be started or completed.
 class PaymentServiceException implements Exception {
   final String message;
@@ -46,7 +48,7 @@ class PaymentService {
     }
 
     if (paymentMethod == 'cash') {
-      return <String, dynamic>{
+      final result = <String, dynamic>{
         'status': 'success',
         'transactionId': 'CASH-${DateTime.now().millisecondsSinceEpoch}',
         'amount': (amount / 100).toStringAsFixed(2),
@@ -54,6 +56,11 @@ class PaymentService {
         'date': DateTime.now().toIso8601String(),
         'paymentMethod': 'cash',
       };
+      await saveTransactionFromEvoResult(
+        result,
+        amountMajor: amount / 100.0,
+      );
+      return result;
     }
 
     final payload = <String, dynamic>{
@@ -81,9 +88,14 @@ class PaymentService {
         );
       }
 
-      return rawResult.map(
+      final result = rawResult.map(
         (key, value) => MapEntry(key.toString(), value),
       );
+      await saveTransactionFromEvoResult(
+        result,
+        amountMajor: amount / 100.0,
+      );
+      return result;
     } on PlatformException catch (e) {
       if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {
         throw PaymentServiceException(
@@ -161,7 +173,14 @@ class PaymentService {
           code: 'invalid_result_type',
         );
       }
-      return rawResult.map((key, value) => MapEntry(key.toString(), value));
+      final result = rawResult.map((key, value) => MapEntry(key.toString(), value));
+      await saveTransactionFromEvoResult(
+        result,
+        amountMajor: amount / 100.0,
+        isRefund: true,
+        originalTransactionId: originalTransactionId,
+      );
+      return result;
     } on PlatformException catch (e) {
       if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {
         throw PaymentServiceException(

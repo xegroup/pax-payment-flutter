@@ -86,12 +86,12 @@ class _ApiService implements ApiService {
   }
 
   @override
-  Future<TransactionResponse> saveTransaction(Map<String, dynamic> body) async {
+  Future<TransactionResponse> saveTransaction(TransactionRequest body) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     final _data = <String, dynamic>{};
-    _data.addAll(body);
+    _data.addAll(body.toJson());
     final _options = _setStreamType<TransactionResponse>(
       Options(
             method: 'POST',

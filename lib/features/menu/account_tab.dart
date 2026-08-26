@@ -172,7 +172,7 @@ class AccountTab extends StatelessWidget {
                 ),
                 const SizedBox(height: PaxPaymentSpacing.sp2),
                 Text(
-                  _time.format(t.time),
+                  t.time,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: PaxPaymentColors.mediumGray,
                       ),

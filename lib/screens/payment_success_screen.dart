@@ -24,7 +24,7 @@ class PaymentSuccessScreen extends StatefulWidget {
   final String? cardLast4;
   final String? cardType;
   final String transactionId;
-  final DateTime timestamp;
+  final String timestamp;
   final bool popWithResult;
 
   @override
@@ -170,7 +170,7 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
               style: PaxTextStyles.caption.copyWith(color: TeyaColors.textGrey),
             ),
             Text(
-              TeyaUi.ukDateTime.format(widget.timestamp),
+              widget.timestamp,
               textAlign: TextAlign.center,
               style: PaxTextStyles.caption.copyWith(color: TeyaColors.textGrey),
             ),

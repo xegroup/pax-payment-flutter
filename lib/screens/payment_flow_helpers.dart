@@ -2,12 +2,12 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../core/di/injection.dart';
-import '../core/database/local_storage.dart';
 import '../core/services/payment_service.dart';
-import '../features/menu/data/dummy_payments_data.dart';
 import '../features/menu/models/payment_transaction.dart';
+import '../features/transaction/data/transaction_save_service.dart';
 import 'payment_navigation.dart';
+
+export '../features/transaction/data/transaction_save_service.dart';
 
 /// TXN- + 8 random uppercase alphanumeric characters.
 String generateTransactionId() {
@@ -25,12 +25,10 @@ String? extractCardLast4(Object? raw) {
 }
 
 String parseCardType(Map<String, dynamic> result) {
-  final scheme = (result['cardType'] ??
-          result['cardScheme'] ??
-          result['brand'] ??
-          '')
-      .toString()
-      .trim();
+  final scheme =
+      (result['cardType'] ?? result['cardScheme'] ?? result['brand'] ?? '')
+          .toString()
+          .trim();
   if (scheme.isNotEmpty) return scheme;
   return 'Visa';
 }
@@ -38,61 +36,34 @@ String parseCardType(Map<String, dynamic> result) {
 PaymentStatus? parsePaymentStatus(Map<String, dynamic> result) {
   final statusValue = (result['status'] ?? '').toString().toLowerCase();
   return switch (statusValue) {
-    'success' || 'approved' || 'ok' || 'completed' || 'true' =>
-      PaymentStatus.success,
+    'success' ||
+    'approved' ||
+    'ok' ||
+    'completed' ||
+    'true' => PaymentStatus.success,
     'cancelled' || 'canceled' => null,
     _ => PaymentStatus.failed,
   };
 }
 
 String parseDeclineReason(Map<String, dynamic> result) {
-  final msg = (result['message'] ??
-          result['declineReason'] ??
-          result['error'] ??
-          '')
-      .toString()
-      .trim();
+  final msg =
+      (result['message'] ?? result['declineReason'] ?? result['error'] ?? '')
+          .toString()
+          .trim();
   if (msg.isNotEmpty) return msg;
   return 'Payment could not be processed';
 }
 
-Future<PaymentTransaction> saveCardTransaction({
-  required double amount,
-  required PaymentStatus status,
-  required String transactionId,
-  String? cardLast4,
-  String? cardType,
-  String? evoTransactionRef,
-}) async {
-  final storeTag = sl<LocalStorage>().currentStore;
-  final tx = PaymentTransaction(
-    id: transactionId,
-    amount: amount,
-    status: status,
-    time: DateTime.now(),
-    customerName: 'Walk-in Customer',
-    cardType: cardType ?? 'Card',
-    refundSupported: status == PaymentStatus.success,
-    cardLast4: cardLast4,
-    evoTransactionRef: evoTransactionRef,
-    storeTag: storeTag,
-  );
-  await DummyPaymentsData.addTransaction(tx);
-  return tx;
+String? parseCardNumber(Map<String, dynamic> result) {
+  final cardNumber = result['cardNumber']?.toString().trim();
+  if (cardNumber != null && cardNumber.isNotEmpty) return cardNumber;
+  return null;
 }
-
-Future<PaymentTransaction> saveCashTransaction({
-  required double amount,
-  required String transactionId,
-}) async {
-  return saveCardTransaction(
-    amount: amount,
-    status: PaymentStatus.success,
-    transactionId: transactionId,
-    cardType: 'Cash',
-    cardLast4: null,
-    evoTransactionRef: null,
-  );
+String? parseTerminalTime(Map<String, dynamic> result) {
+  final date = result['date']?.toString().trim();
+  if (date != null && date.isNotEmpty) return date;
+  return null;
 }
 
 double roundMoney(double v) => double.parse(v.toStringAsFixed(2));
@@ -128,20 +99,11 @@ Future<void> startCardPaymentFlow(
     final transactionId = (nativeId != null && nativeId.isNotEmpty)
         ? nativeId
         : generateTransactionId();
-    final last4 = extractCardLast4(result['cardNumber']);
+    final last4 = parseCardNumber(result);
     final cardType = parseCardType(result);
-    final evoRef = nativeId?.isNotEmpty == true ? nativeId : null;
+    if (!context.mounted) return;
 
     if (status == PaymentStatus.success) {
-      await saveCardTransaction(
-        amount: amount,
-        status: PaymentStatus.success,
-        transactionId: transactionId,
-        cardLast4: last4,
-        cardType: cardType,
-        evoTransactionRef: evoRef,
-      );
-      if (!context.mounted) return;
       navigateToPaymentSuccess(
         context,
         amount: amount,
@@ -151,15 +113,6 @@ Future<void> startCardPaymentFlow(
         popWithResult: popWithResult,
       );
     } else {
-      await saveCardTransaction(
-        amount: amount,
-        status: PaymentStatus.failed,
-        transactionId: transactionId,
-        cardLast4: last4,
-        cardType: cardType,
-        evoTransactionRef: evoRef,
-      );
-      if (!context.mounted) return;
       navigateToPaymentDeclined(
         context,
         amount: amount,
@@ -168,6 +121,7 @@ Future<void> startCardPaymentFlow(
       );
     }
   } on PaymentServiceException catch (e) {
+    await saveFailedCardTransaction(amount: amount);
     if (!context.mounted) return;
     navigateToPaymentDeclined(
       context,

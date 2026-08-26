@@ -4,7 +4,6 @@ import '../../shared/theme/paxpayment_colors.dart';
 import 'account_tab.dart';
 import 'explore_tab.dart';
 import 'home_tab.dart';
-import 'sales_tab.dart';
 
 /// Main app shell after login: bottom navigation (Home, Sales, Account, Explore).
 class MenuShell extends StatefulWidget {
@@ -19,7 +18,6 @@ class _MenuShellState extends State<MenuShell> {
 
   static final _pages = <Widget>[
     const HomeTab(),
-    const SalesTab(),
     const AccountTab(),
     const ExploreTab(),
   ];

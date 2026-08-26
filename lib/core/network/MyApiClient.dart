@@ -1,12 +1,14 @@
 import 'package:dio/dio.dart';
 
 import '../../features/auth/data/login_response.dart';
+import '../../features/transaction/data/transaction_request.dart';
 import '../../features/transaction/data/transaction_response.dart';
 import '../../features/transaction/data/transactions_list_response.dart';
 import '../di/injection.dart';
 import '../security/secure_storage_service.dart';
 import '../services/api_service.dart';
 import 'AuthInterceptor.dart';
+import '../auth/auth_session.dart';
 
 class MyApiClient {
   static ApiService? _apiService;
@@ -35,11 +37,21 @@ class MyApiClient {
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         sendTimeout: const Duration(seconds: 30),
+        headers: const {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
         validateStatus: (status) => status != null && status < 500,
       ),
     );
 
-    _authInterceptor = AuthInterceptor(authToken: initialAuthToken);
+    _authInterceptor = AuthInterceptor(
+      authToken: initialAuthToken,
+      onUnauthorized: ({message}) => AuthSession.handleUnauthorized(
+        clearToken: clearAuthToken,
+        message: message,
+      ),
+    );
     _dio!.interceptors.add(_authInterceptor!);
     _dio!.interceptors.add(
       LogInterceptor(
@@ -93,7 +105,10 @@ class MyApiClient {
     return instance.signup(body);
   }
 
-  static Future<TransactionResponse> saveTransaction(Map<String, dynamic> body) {
+  static Future<TransactionResponse> saveTransaction(
+    TransactionRequest body,
+  ) async {
+    await loadPersistedAuthToken();
     return instance.saveTransaction(body);
   }
 

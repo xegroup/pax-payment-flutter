@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import '../theme/paxpayment_colors.dart';
 import '../theme/paxpayment_spacing.dart';
 
-/// Handheld-style keypay: 3×3 digits, bottom row (00 · 0 · ⌫), operator column, optional Charge footer.
+/// Handheld-style keypay: 3×3 digits, bottom row (00 · 0 · ⌫), optional operator column, optional Charge footer.
 class PosKeypayPanel extends StatelessWidget {
   const PosKeypayPanel({
     super.key,
@@ -13,6 +13,7 @@ class PosKeypayPanel extends StatelessWidget {
     required this.onClear,
     this.onOperatorTap,
     this.footer,
+    this.showOperatorColumn = true,
   });
 
   final ValueChanged<String> onDigit;
@@ -20,6 +21,7 @@ class PosKeypayPanel extends StatelessWidget {
   final VoidCallback onClear;
   final ValueChanged<String>? onOperatorTap;
   final Widget? footer;
+  final bool showOperatorColumn;
 
   @override
   Widget build(BuildContext context) {
@@ -184,75 +186,77 @@ class PosKeypayPanel extends StatelessWidget {
                             ),
                           ),
                         ),
-                        Container(
-                          width: 52,
-                          color: opBg,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: PaxPaymentSpacing.sp4,
+                        if (showOperatorColumn) ...[
+                          Container(
+                            width: 52,
+                            color: opBg,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: PaxPaymentSpacing.sp4,
+                            ),
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: _OpKey(
+                                    label: 'C',
+                                    onTap: () {
+                                      HapticFeedback.mediumImpact();
+                                      onClear();
+                                    },
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _OpKey(
+                                    label: '÷',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      onOperatorTap?.call('÷');
+                                    },
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _OpKey(
+                                    label: '×',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      onOperatorTap?.call('×');
+                                    },
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _OpKey(
+                                    label: '−',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      onOperatorTap?.call('−');
+                                    },
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _OpKey(
+                                    label: '+',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      onOperatorTap?.call('+');
+                                    },
+                                  ),
+                                ),
+                                Expanded(
+                                  child: _OpKey(
+                                    label: '=',
+                                    onTap: () {
+                                      HapticFeedback.selectionClick();
+                                      onOperatorTap?.call('=');
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Column(
-                            children: [
-                              Expanded(
-                                child: _OpKey(
-                                  label: 'C',
-                                  onTap: () {
-                                    HapticFeedback.mediumImpact();
-                                    onClear();
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: _OpKey(
-                                  label: '÷',
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    onOperatorTap?.call('÷');
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: _OpKey(
-                                  label: '×',
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    onOperatorTap?.call('×');
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: _OpKey(
-                                  label: '−',
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    onOperatorTap?.call('−');
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: _OpKey(
-                                  label: '+',
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    onOperatorTap?.call('+');
-                                  },
-                                ),
-                              ),
-                              Expanded(
-                                child: _OpKey(
-                                  label: '=',
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    onOperatorTap?.call('=');
-                                  },
-                                ),
-                              ),
-                            ],
+                          Container(
+                            width: 3,
+                            color: PaxPaymentColors.posKeypayAccent,
                           ),
-                        ),
-                        Container(
-                          width: 3,
-                          color: PaxPaymentColors.posKeypayAccent,
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -261,35 +265,36 @@ class PosKeypayPanel extends StatelessWidget {
               ],
             ),
           ),
-          Positioned(
-            right: -2,
-            top: 0,
-            bottom: footer != null ? footerH : 0,
-            child: Center(
-              child: Container(
-                width: 10,
-                height: 28,
-                decoration: const BoxDecoration(
-                  color: PaxPaymentColors.white,
-                  borderRadius: BorderRadius.horizontal(
-                    right: Radius.circular(PaxPaymentSpacing.radiusRound),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x14000000),
-                      blurRadius: 4,
-                      offset: Offset(1, 0),
+          if (showOperatorColumn)
+            Positioned(
+              right: -2,
+              top: 0,
+              bottom: footer != null ? footerH : 0,
+              child: Center(
+                child: Container(
+                  width: 10,
+                  height: 28,
+                  decoration: const BoxDecoration(
+                    color: PaxPaymentColors.white,
+                    borderRadius: BorderRadius.horizontal(
+                      right: Radius.circular(PaxPaymentSpacing.radiusRound),
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.chevron_left_rounded,
-                  size: 16,
-                  color: PaxPaymentColors.mediumGray,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x14000000),
+                        blurRadius: 4,
+                        offset: Offset(1, 0),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.chevron_left_rounded,
+                    size: 16,
+                    color: PaxPaymentColors.mediumGray,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

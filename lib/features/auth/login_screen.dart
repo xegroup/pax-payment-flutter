@@ -13,7 +13,9 @@ import '../menu/checkout_payment_screen.dart';
 
 /// Sign-in screen backed by the login API.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.sessionMessage});
+
+  final String? sessionMessage;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -25,6 +27,18 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.sessionMessage != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _resetStoredSession());
+    }
+  }
+
+  Future<void> _resetStoredSession() async {
+    await MyApiClient.clearAuthToken();
+  }
 
   @override
   void dispose() {
@@ -182,6 +196,31 @@ class _LoginScreenState extends State<LoginScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    if (widget.sessionMessage != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(PaxPaymentSpacing.sp12),
+                        decoration: BoxDecoration(
+                          color: PaxPaymentColors.primaryBlue
+                              .withValues(alpha: 0.08),
+                          borderRadius: borderRadius,
+                          border: Border.all(
+                            color: PaxPaymentColors.primaryBlue
+                                .withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Text(
+                          widget.sessionMessage!,
+                          textAlign: TextAlign.center,
+                          style:
+                              Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: PaxPaymentColors.darkGrayText,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ),
+                      SizedBox(height: sectionGap),
+                    ],
                     Icon(
                       Icons.account_balance_wallet_outlined,
                       size: r.value(mobile: 48.0, tablet: 56.0),

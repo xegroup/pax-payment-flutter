@@ -1,9 +1,17 @@
 import 'package:dio/dio.dart';
 
+import '../auth/auth_session.dart';
+
+typedef UnauthorizedHandler = Future<void> Function({String? message});
+
 class AuthInterceptor extends Interceptor {
   String? _authToken;
+  final UnauthorizedHandler? onUnauthorized;
 
-  AuthInterceptor({String? authToken}) : _authToken = authToken;
+  AuthInterceptor({
+    String? authToken,
+    this.onUnauthorized,
+  }) : _authToken = authToken;
 
   void setAuthToken(String token) {
     _authToken = token;
@@ -23,10 +31,13 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    // Handle 401 Unauthorized - token expired
-    if (err.response?.statusCode == 401) {
-      print("🔐 Token expired - implement refresh logic here");
-      // TODO: Implement token refresh logic
+    if (AuthSession.shouldForceLogin(
+      statusCode: err.response?.statusCode,
+      path: err.requestOptions.path,
+    )) {
+      onUnauthorized?.call(
+        message: 'Your session has expired. Please sign in again.',
+      );
     }
     return handler.next(err);
   }

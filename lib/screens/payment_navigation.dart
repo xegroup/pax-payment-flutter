@@ -28,7 +28,7 @@ void navigateToPaymentSuccess(
       cardLast4: cardLast4,
       cardType: cardType,
       transactionId: transactionId,
-      timestamp: timestamp ?? DateTime.now(),
+      timestamp: timestamp.toString(),
       popWithResult: popWithResult,
     ),
   );

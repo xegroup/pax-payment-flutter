@@ -10,7 +10,7 @@ TransactionDataModel _$TransactionDataModelFromJson(
   Map<String, dynamic> json,
 ) => TransactionDataModel(
   id: json['id'] as String,
-  amount: (json['amount'] as num).toInt(),
+  amount: (json['amount'] as num).toDouble(),
   status: json['status'] as String,
   time: json['time'] as String,
   customerName: json['customerName'] as String,
