@@ -30,6 +30,22 @@ class AuthInterceptor extends Interceptor {
   }
 
   @override
+  void onResponse(
+    Response response,
+    ResponseInterceptorHandler handler,
+  ) {
+    if (AuthSession.shouldForceLogin(
+      statusCode: response.statusCode,
+      path: response.requestOptions.path,
+    )) {
+      onUnauthorized?.call(
+        message: 'Your session has expired. Please sign in again.',
+      );
+    }
+    handler.next(response);
+  }
+
+  @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (AuthSession.shouldForceLogin(
       statusCode: err.response?.statusCode,

@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'package:pax_payment/features/transaction/data/evo_data_model.dart';
 
 import '../../menu/models/payment_transaction.dart';
 
@@ -19,6 +20,8 @@ class TransactionDataModel {
   final String? cardLast4;
   final String? evoTransactionRef;
   final String storeTag;
+  final EvoDataModel? evo;
+
 
   TransactionDataModel({
     required this.id,
@@ -34,6 +37,7 @@ class TransactionDataModel {
     this.cardLast4,
     this.evoTransactionRef,
     required this.storeTag,
+    required this.evo
   });
 
   factory TransactionDataModel.fromJson(Map<String, dynamic> json) =>
@@ -66,7 +70,9 @@ class TransactionDataModel {
       originalTransactionId: _nullableString(originalTransactionId),
       cardLast4: _nullableString(cardLast4),
       evoTransactionRef: _nullableString(evoTransactionRef),
-      storeTag: storeTag
+      storeTag: storeTag,
+      evo: evo
+
     );
   }
 

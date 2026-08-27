@@ -18,6 +18,27 @@ class TransactionRequest {
   final bool isRefunded;
   final String storeTag;
 
+  // evo data
+  final double slipNumber;
+  final double terminalId;
+  final String transactionCurrency;
+  final int result;
+  final String authorizationMessage;
+  final String merchantId;
+  final String AC;
+  final String AID;
+  final String ATC;
+  final String TSI;
+  final String TVR;
+  final String date;
+  final String maskedCardNumber;
+  final String transactionTitle;
+  final String cardSource;
+  final String cardBrandName;
+  final String cardsetName;
+  final String serverMessage;
+  final double transactionAmount;
+
   TransactionRequest({
     required this.id,
     required this.amount,
@@ -29,6 +50,26 @@ class TransactionRequest {
     required this.isRefund,
     required this.isRefunded,
     required this.storeTag,
+    // evo data
+    required this.slipNumber,
+    required this.terminalId,
+    required this.transactionCurrency,
+    required this.result,
+    required this.authorizationMessage,
+    required this.merchantId,
+    required this.AC,
+    required this.AID,
+    required this.ATC,
+    required this.TSI,
+    required this.TVR,
+    required this.date,
+    required this.maskedCardNumber,
+    required this.transactionTitle,
+    required this.cardSource,
+    required this.cardBrandName,
+    required this.cardsetName,
+    required this.serverMessage,
+    required this.transactionAmount,
   });
 
   factory TransactionRequest.fromJson(Map<String, dynamic> json) =>
@@ -40,13 +81,32 @@ class TransactionRequest {
     required double amount,
     required String status,
     required String transactionId,
-    String? cardType,
-    String? time,
-    String? customerName,
-    String? storeTag,
-    bool refundSupported = false,
+    required String? cardType,
+    required String? time,
+    required String? customerName,
+    required String? storeTag,
+    bool refundSupported = true,
     bool isRefund = false,
     bool isRefunded = false,
+    required double slipNumber,
+    required double terminalId,
+    required String transactionCurrency,
+    required int result,
+    required String authorizationMessage,
+    required String merchantId,
+    required String AC,
+    required String AID,
+    required String ATC,
+    required String TSI,
+    required String TVR,
+    required String date,
+    required String maskedCardNumber,
+    required String transactionTitle,
+    required String cardSource,
+    required String cardBrandName,
+    required String cardsetName,
+    required String serverMessage,
+    required double transactionAmount
   }) {
     final id = transactionId.trim().isNotEmpty
         ? transactionId.trim()
@@ -69,6 +129,25 @@ class TransactionRequest {
       isRefund: isRefund,
       isRefunded: isRefunded,
       storeTag: resolvedStore,
+      slipNumber: slipNumber,
+      terminalId: terminalId,
+      transactionCurrency: transactionCurrency,
+      result: result,
+      authorizationMessage: authorizationMessage,
+      merchantId: merchantId,
+      AC: AC,
+      AID: AID,
+      ATC: ATC,
+      TSI: TSI,
+      TVR: TVR,
+      date: date,
+      maskedCardNumber: maskedCardNumber,
+      transactionTitle: transactionTitle,
+      cardSource: cardSource,
+      cardBrandName: cardBrandName,
+      cardsetName: cardsetName,
+      serverMessage: serverMessage,
+      transactionAmount: transactionAmount
     );
   }
 }

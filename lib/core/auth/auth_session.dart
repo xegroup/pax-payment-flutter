@@ -18,7 +18,8 @@ class AuthSession {
     if (statusCode != 401 && statusCode != 403) return false;
     final normalized = path.toLowerCase();
     if (normalized.contains('/auth/login') ||
-        normalized.contains('/auth/register')) {
+        normalized.contains('/auth/register') ||
+        normalized.contains('/auth/check')) {
       return false;
     }
     return true;

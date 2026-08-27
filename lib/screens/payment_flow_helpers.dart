@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:pax_payment/features/transaction/data/evo_data_model.dart';
 
 import '../core/services/payment_service.dart';
 import '../features/menu/models/payment_transaction.dart';
@@ -60,6 +61,7 @@ String? parseCardNumber(Map<String, dynamic> result) {
   if (cardNumber != null && cardNumber.isNotEmpty) return cardNumber;
   return null;
 }
+
 String? parseTerminalTime(Map<String, dynamic> result) {
   final date = result['date']?.toString().trim();
   if (date != null && date.isNotEmpty) return date;
@@ -75,6 +77,11 @@ Future<void> startCardPaymentFlow(
 }) async {
   final paymentService = PaymentService();
 
+  String? nativeId="";
+  String? transactionId="";
+  String? last4="";
+  String? cardType="";
+
   try {
     final result = await paymentService.startPayment(
       amount: (amount * 100).round(),
@@ -84,6 +91,14 @@ Future<void> startCardPaymentFlow(
 
     if (!context.mounted) return;
 
+    nativeId = result['transactionId']?.toString().trim();
+    transactionId = (nativeId != null && nativeId.isNotEmpty)
+        ? nativeId
+        : generateTransactionId();
+    last4 = parseCardNumber(result);
+    cardType = parseCardType(result);
+    if (!context.mounted) return;
+
     final status = parsePaymentStatus(result);
     if (status == null) {
       navigateToPaymentDeclined(
@@ -91,17 +106,32 @@ Future<void> startCardPaymentFlow(
         amount: amount,
         declineReason: 'Payment cancelled',
         popWithResult: popWithResult,
+        evo: EvoDataModel(
+          slipNumber: 0,
+          terminalId: 0,
+          transactionCurrency: "GBP",
+          result: 1,
+          authorizationMessage: "",
+          merchantId: "",
+          AC: "",
+          AID: "",
+          ATC: "",
+          TSI: "",
+          TVR: "",
+          date: "",
+          maskedCardNumber: last4.toString(),
+          transactionTitle: "",
+          cardSource: "",
+          cardBrandName: cardType,
+          cardsetName: "",
+          serverMessage: "",
+          transactionAmount: amount,
+        ),
       );
       return;
     }
 
-    final nativeId = result['transactionId']?.toString().trim();
-    final transactionId = (nativeId != null && nativeId.isNotEmpty)
-        ? nativeId
-        : generateTransactionId();
-    final last4 = parseCardNumber(result);
-    final cardType = parseCardType(result);
-    if (!context.mounted) return;
+
 
     if (status == PaymentStatus.success) {
       navigateToPaymentSuccess(
@@ -111,31 +141,171 @@ Future<void> startCardPaymentFlow(
         cardType: cardType,
         transactionId: transactionId,
         popWithResult: popWithResult,
+        evo: EvoDataModel(
+          slipNumber: 0,
+          terminalId: 0,
+          transactionCurrency: "GBP",
+          result: 1,
+          authorizationMessage: "",
+          merchantId: "",
+          AC: "",
+          AID: "",
+          ATC: "",
+          TSI: "",
+          TVR: "",
+          date: "",
+          maskedCardNumber: last4.toString(),
+          transactionTitle: "",
+          cardSource: "",
+          cardBrandName: cardType,
+          cardsetName: "",
+          serverMessage: "",
+          transactionAmount: amount,
+        ),
       );
     } else {
+      await saveFailedCardTransaction(amount: amount,transactionId: '',slipNumber: 0,
+          terminalId: 0,
+          transactionCurrency: "GBP",
+          result: 1,
+          authorizationMessage: "",
+          merchantId: "",
+          AC: "",
+          AID: "",
+          ATC: "",
+          TSI: "",
+          TVR: "",
+          date: "",
+          maskedCardNumber: last4.toString(),
+          transactionTitle: "",
+          cardSource: "",
+          cardBrandName: cardType.toString(),
+          cardsetName: "",
+          serverMessage: "",
+          transactionAmount: amount);
       navigateToPaymentDeclined(
         context,
         amount: amount,
         declineReason: parseDeclineReason(result),
         popWithResult: popWithResult,
+        evo: EvoDataModel(
+          slipNumber: 0,
+          terminalId: 0,
+          transactionCurrency: "GBP",
+          result: 1,
+          authorizationMessage: "",
+          merchantId: "",
+          AC: "",
+          AID: "",
+          ATC: "",
+          TSI: "",
+          TVR: "",
+          date: "",
+          maskedCardNumber: last4.toString(),
+          transactionTitle: "",
+          cardSource: "",
+          cardBrandName: cardType,
+          cardsetName: "",
+          serverMessage: "",
+          transactionAmount: amount,
+        ),
       );
     }
   } on PaymentServiceException catch (e) {
-    await saveFailedCardTransaction(amount: amount);
+    await saveFailedCardTransaction(amount: amount,transactionId: '',slipNumber: 0,
+      terminalId: 0,
+      transactionCurrency: "GBP",
+      result: 1,
+      authorizationMessage: "",
+      merchantId: "",
+      AC: "",
+      AID: "",
+      ATC: "",
+      TSI: "",
+      TVR: "",
+      date: "",
+      maskedCardNumber: last4.toString(),
+      transactionTitle: "",
+      cardSource: "",
+      cardBrandName: cardType.toString(),
+      cardsetName: "",
+      serverMessage: "",
+      transactionAmount: amount);
     if (!context.mounted) return;
     navigateToPaymentDeclined(
       context,
       amount: amount,
       declineReason: e.message,
       popWithResult: popWithResult,
+      evo: EvoDataModel(
+        slipNumber: 0,
+        terminalId: 0,
+        transactionCurrency: "GBP",
+        result: 1,
+        authorizationMessage: "",
+        merchantId: "",
+        AC: "",
+        AID: "",
+        ATC: "",
+        TSI: "",
+        TVR: "",
+        date: "",
+        maskedCardNumber: last4.toString(),
+        transactionTitle: "",
+        cardSource: "",
+        cardBrandName: cardType.toString(),
+        cardsetName: "",
+        serverMessage: "",
+        transactionAmount: amount
+      ),
     );
   } catch (_) {
     if (!context.mounted) return;
+    await saveFailedCardTransaction(amount: amount,transactionId: '',slipNumber: 0,
+        terminalId: 0,
+        transactionCurrency: "GBP",
+        result: 1,
+        authorizationMessage: "",
+        merchantId: "",
+        AC: "",
+        AID: "",
+        ATC: "",
+        TSI: "",
+        TVR: "",
+        date: "",
+        maskedCardNumber: last4.toString(),
+        transactionTitle: "",
+        cardSource: "",
+        cardBrandName: cardType.toString(),
+        cardsetName: "",
+        serverMessage: "",
+        transactionAmount: amount);
     navigateToPaymentDeclined(
       context,
       amount: amount,
       declineReason: 'Payment could not be processed',
       popWithResult: popWithResult,
+      evo: EvoDataModel(
+        slipNumber: 0,
+        terminalId: 0,
+        transactionCurrency: "GBP",
+        result: 1,
+        authorizationMessage: "",
+        merchantId: "",
+        AC: "",
+        AID: "",
+        ATC: "",
+        TSI: "",
+        TVR: "",
+        date: "",
+        maskedCardNumber: last4.toString(),
+        transactionTitle: "",
+        cardSource: "",
+        cardBrandName: cardType.toString(),
+        cardsetName: "",
+        serverMessage: "",
+        transactionAmount: amount
+      ),
     );
   }
 }

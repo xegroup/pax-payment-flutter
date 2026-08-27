@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
 import '../../core/security/manager_pin_gate.dart';
-import '../../features/admin/admin_screen.dart';
 import '../../screens/payment_settings_screen.dart';
 import '../../main.dart';
 import 'data/dummy_payments_data.dart';
@@ -50,31 +49,6 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _SectionCard(
-            title: 'Admin',
-            subtitle: 'Merchant administration tools.',
-            icon: Icons.admin_panel_settings_outlined,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const AdminScreen()),
-              );
-            },
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          _SectionCard(
-            title: 'Profile',
-            subtitle: 'Name, email, and account preferences.',
-            icon: Icons.person_outline_rounded,
-            onTap: () => _showComingSoon(context, 'Profile'),
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          _SectionCard(
-            title: 'Business info',
-            subtitle: 'Store details, VAT, and merchant profile.',
-            icon: Icons.storefront_outlined,
-            onTap: () => _showComingSoon(context, 'Business info'),
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          _SectionCard(
             title: 'Payment settings',
             subtitle: 'Tips, cash, receipts, and auto-print.',
             icon: Icons.tune_rounded,
@@ -99,15 +73,6 @@ class SettingsScreen extends StatelessWidget {
             label: const Text('Take payment'),
           ),
         ],
-      ),
-    );
-  }
-
-  static void _showComingSoon(BuildContext context, String label) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$label — coming soon'),
-        behavior: SnackBarBehavior.floating,
       ),
     );
   }

@@ -32,7 +32,8 @@ Future<TransactionResponse?> saveTransactionFromEvoResult(
       ? nativeId
       : _generateTransactionId();
   final terminalTime = _parseTerminalTime(result);
-  final cardType = cardTypeOverride ??
+  final cardType =
+      cardTypeOverride ??
       (result['paymentMethod']?.toString().toLowerCase() == 'cash'
           ? 'Cash'
           : _parseCardType(result));
@@ -46,7 +47,8 @@ Future<TransactionResponse?> saveTransactionFromEvoResult(
     transactionId: transactionId,
     cardType: cardType,
     time: terminalTime,
-    customerName: customerName ??
+    customerName:
+        customerName ??
         (isRefund && originalTransactionId != null
             ? 'Refund for $originalTransactionId'
             : null),
@@ -54,12 +56,34 @@ Future<TransactionResponse?> saveTransactionFromEvoResult(
     refundSupported: !isRefund && paymentStatus == PaymentStatus.success,
     isRefund: isRefund,
     isRefunded: false,
+
+    slipNumber: 0,
+    terminalId: 0,
+    transactionCurrency: '',
+    result: -1,
+    authorizationMessage: '',
+    merchantId: '',
+    AC: '',
+    AID: '',
+    ATC: '',
+    TSI: '',
+    TVR: '',
+    date: '',
+    maskedCardNumber: '',
+    transactionTitle: '',
+    cardSource: '',
+    cardBrandName: '',
+    cardsetName: '',
+    serverMessage: '',
+    transactionAmount: 0,
   );
 
   return saveCardTransaction(request);
 }
 
-Future<TransactionResponse?> saveCardTransaction(TransactionRequest request) async {
+Future<TransactionResponse?> saveCardTransaction(
+  TransactionRequest request,
+) async {
   try {
     final response = await MyApiClient.saveTransaction(request);
     developer.log(
@@ -89,6 +113,25 @@ Future<TransactionResponse?> saveCardTransaction(TransactionRequest request) asy
 Future<TransactionResponse?> saveCashTransaction({
   required double amount,
   required String transactionId,
+  required double slipNumber,
+  required double terminalId,
+  required String transactionCurrency,
+  required int result,
+  required String authorizationMessage,
+  required String merchantId,
+  required String AC,
+  required String AID,
+  required String ATC,
+  required String TSI,
+  required String TVR,
+  required String date,
+  required String maskedCardNumber,
+  required String transactionTitle,
+  required String cardSource,
+  required String cardBrandName,
+  required String cardsetName,
+  required String serverMessage,
+  required double transactionAmount
 }) async {
   return saveCardTransaction(
     TransactionRequest.forCardPayment(
@@ -98,13 +141,53 @@ Future<TransactionResponse?> saveCashTransaction({
       cardType: 'Cash',
       storeTag: sl<LocalStorage>().currentStore,
       refundSupported: true,
+      slipNumber: slipNumber,
+      terminalId: terminalId,
+      transactionCurrency: transactionCurrency,
+      result: result,
+      authorizationMessage: authorizationMessage,
+      merchantId: merchantId,
+      AC: AC,
+      AID: AID,
+      ATC: ATC,
+      TSI: TSI,
+      TVR: TVR,
+      date: date,
+      maskedCardNumber: maskedCardNumber,
+      transactionTitle: transactionTitle,
+      cardSource: cardSource,
+      cardBrandName: cardBrandName,
+      cardsetName: cardsetName,
+      serverMessage: serverMessage,
+      transactionAmount: transactionAmount,
+      time: '',
+      customerName: ''
     ),
   );
 }
 
 Future<TransactionResponse?> saveFailedCardTransaction({
   required double amount,
-  String? transactionId,
+  required String? transactionId,
+  required double slipNumber,
+  required double terminalId,
+  required String transactionCurrency,
+  required int result,
+  required String authorizationMessage,
+  required String merchantId,
+  required String AC,
+  required String AID,
+  required String ATC,
+  required String TSI,
+  required String TVR,
+  required String date,
+  required String maskedCardNumber,
+  required String transactionTitle,
+  required String cardSource,
+  required String cardBrandName,
+  required String cardsetName,
+  required String serverMessage,
+  required double transactionAmount
 }) {
   return saveCardTransaction(
     TransactionRequest.forCardPayment(
@@ -112,6 +195,28 @@ Future<TransactionResponse?> saveFailedCardTransaction({
       status: 'failed',
       transactionId: transactionId ?? _generateTransactionId(),
       storeTag: sl<LocalStorage>().currentStore,
+      slipNumber: slipNumber,
+      terminalId: terminalId,
+      transactionCurrency: transactionCurrency,
+      result: result,
+      authorizationMessage: authorizationMessage,
+      merchantId: merchantId,
+      AC: AC,
+      AID: AID,
+      ATC: ATC,
+      TSI: TSI,
+      TVR: TVR,
+      date: date,
+      maskedCardNumber: maskedCardNumber,
+      transactionTitle: transactionTitle,
+      cardSource: cardSource,
+      cardBrandName: cardBrandName,
+      cardsetName: cardsetName,
+      serverMessage: serverMessage,
+      transactionAmount: transactionAmount,
+      cardType: '',
+      time: '',
+      customerName: ''
     ),
   );
 }

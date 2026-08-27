@@ -58,7 +58,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
     });
 
     try {
-      final response = await MyApiClient.getAllTransactions();
+      final response = await MyApiClient.getAllTransactions(30,"",25,"");
       if (!mounted) return;
       setState(() {
         _transactions = response.data.map((r) => r.toPaymentTransaction()).toList()

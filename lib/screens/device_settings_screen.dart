@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:uuid/uuid.dart';
 
-import '../core/device/pax_device_channel.dart';
 import '../core/di/injection.dart';
 import '../core/database/local_storage.dart';
-import '../services/printer_service.dart';
 import '../shared/theme/paxpayment_colors.dart';
 import '../shared/theme/paxpayment_spacing.dart';
 
-/// Device-level settings: Wi‑Fi, printer test, version, terminal IDs.
+/// Device-level settings: version and terminal IDs.
 class DeviceSettingsScreen extends StatefulWidget {
   const DeviceSettingsScreen({super.key});
 
@@ -27,14 +26,23 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     _load();
   }
 
+  Future<String> generateTerminalId() async {
+    const uuid = Uuid();
+    return uuid.v4();
+  }
+
   Future<void> _load() async {
     final info = await PackageInfo.fromPlatform();
     final storage = sl<LocalStorage>();
+    if(storage.terminalID.isEmpty) {
+      storage.setTerminalId(await generateTerminalId());
+    }
+
     if (!mounted) return;
     setState(() {
       _appVersion = '${info.version} (${info.buildNumber})';
-      _tid = storage.tid.isEmpty ? 'Not set' : storage.tid;
-      _mid = storage.mid.isEmpty ? 'Not set' : storage.mid;
+      _tid = storage.terminalID.isEmpty ? 'Not set' : storage.terminalID;
+      _mid = storage.mid.isEmpty ? '...' : storage.mid;
     });
   }
 
@@ -52,20 +60,6 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(PaxPaymentSpacing.sp16),
         children: [
-          _Tile(
-            title: 'WiFi settings',
-            subtitle: 'Open system Wi‑Fi on this terminal',
-            icon: Icons.wifi_rounded,
-            onTap: () => PaxDeviceChannel.openWifiSettings(),
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          _Tile(
-            title: 'Printer test',
-            subtitle: 'Print a test receipt',
-            icon: Icons.print_outlined,
-            onTap: () => PrinterService.printTestReceipt(context),
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
           _InfoTile(
             title: 'App version',
             value: _appVersion,
@@ -87,31 +81,6 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
       ),
     );
   }
-}
-
-class _Tile extends StatelessWidget {
-  const _Tile({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => _DeviceCard(
-        child: ListTile(
-          leading: Icon(icon, color: PaxPaymentColors.darkGrayText),
-          title: Text(title),
-          subtitle: Text(subtitle),
-          trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: onTap,
-        ),
-      );
 }
 
 class _InfoTile extends StatelessWidget {

@@ -7,6 +7,7 @@ import 'package:retrofit/error_logger.dart';
 import 'package:retrofit/http.dart';
 
 import '../../features/auth/data/login_response.dart';
+import '../../features/transaction/data/session_response.dart';
 
 part 'api_service.g.dart';
 
@@ -28,6 +29,14 @@ abstract class ApiService {
     @Body() TransactionRequest body,
   );
 
-  @GET("api/app/transactions")
-  Future<TransactionsListResponse> getAllTransactions();
+  @GET("api/app/transactions_list")
+  Future<TransactionsListResponse> getAllTransactions(
+      @Query("days") int days,
+      @Query("status") String status,
+      @Query("perPage") int perPage,
+      @Query("q") String cardLast4);
+
+
+  @GET("api/app/auth/check")
+  Future<SessionResponse> checkSession();
 }

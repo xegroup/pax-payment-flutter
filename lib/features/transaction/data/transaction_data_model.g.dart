@@ -22,6 +22,9 @@ TransactionDataModel _$TransactionDataModelFromJson(
   cardLast4: json['cardLast4'] as String?,
   evoTransactionRef: json['evoTransactionRef'] as String?,
   storeTag: json['storeTag'] as String,
+  evo: json['evo'] == null
+      ? null
+      : EvoDataModel.fromJson(json['evo'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$TransactionDataModelToJson(
@@ -40,4 +43,5 @@ Map<String, dynamic> _$TransactionDataModelToJson(
   'cardLast4': instance.cardLast4,
   'evoTransactionRef': instance.evoTransactionRef,
   'storeTag': instance.storeTag,
+  'evo': instance.evo,
 };

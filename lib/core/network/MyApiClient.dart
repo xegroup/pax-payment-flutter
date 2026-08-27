@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../features/auth/data/login_response.dart';
+import '../../features/transaction/data/session_response.dart';
 import '../../features/transaction/data/transaction_request.dart';
 import '../../features/transaction/data/transaction_response.dart';
 import '../../features/transaction/data/transactions_list_response.dart';
@@ -112,8 +113,38 @@ class MyApiClient {
     return instance.saveTransaction(body);
   }
 
-  static Future<TransactionsListResponse> getAllTransactions() async {
+  static Future<TransactionsListResponse> getAllTransactions(int days,String status,int perPage,String cardLast4) async {
     await loadPersistedAuthToken();
-    return instance.getAllTransactions();
+    return instance.getAllTransactions(days,status,perPage,cardLast4);
+  }
+
+  static Future<SessionResponse> checkSession() async {
+    await loadPersistedAuthToken();
+    if (_dio == null) {
+      throw Exception('ApiService not initialized! Call init(baseUrl) first.');
+    }
+
+    final response = await _dio!.get<Map<String, dynamic>>('api/app/auth/check');
+    final code = response.statusCode ?? 0;
+    if (code == 401 || code == 403) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        type: DioExceptionType.badResponse,
+        message: 'Session expired',
+      );
+    }
+
+    final session = SessionResponse.tryParse(response.data);
+    if (session == null) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        type: DioExceptionType.badResponse,
+        message: 'Invalid session response',
+      );
+    }
+
+    return session;
   }
 }
