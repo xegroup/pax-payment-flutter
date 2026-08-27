@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pax_payment/features/transaction/data/evo_data_model.dart';
 
 import '../features/menu/checkout_payment_screen.dart';
 import 'payment_declined_screen.dart';
@@ -6,10 +7,9 @@ import 'payment_success_screen.dart';
 
 /// Clears the payment stack and opens a fresh [CheckoutPaymentScreen].
 void navigateToCheckout(BuildContext context) {
-  Navigator.of(context).pushAndRemoveUntil(
-    CheckoutPaymentScreen.materialRoute(),
-    (route) => false,
-  );
+  Navigator.of(
+    context,
+  ).pushAndRemoveUntil(CheckoutPaymentScreen.materialRoute(), (route) => false);
 }
 
 /// Opens success screen. When [popWithResult] is true, pops with `true` on done (split flow).
@@ -21,6 +21,7 @@ void navigateToPaymentSuccess(
   required String transactionId,
   DateTime? timestamp,
   bool popWithResult = false,
+  required EvoDataModel evo,
 }) {
   final route = MaterialPageRoute<void>(
     builder: (_) => PaymentSuccessScreen(
@@ -30,6 +31,8 @@ void navigateToPaymentSuccess(
       transactionId: transactionId,
       timestamp: timestamp.toString(),
       popWithResult: popWithResult,
+      evo: evo,
+
     ),
   );
   if (popWithResult) {
@@ -47,6 +50,7 @@ void navigateToPaymentDeclined(
   required double amount,
   String? declineReason,
   bool popWithResult = false,
+  required EvoDataModel evo
 }) {
   final route = MaterialPageRoute<void>(
     builder: (_) => PaymentDeclinedScreen(

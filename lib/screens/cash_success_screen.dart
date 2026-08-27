@@ -44,6 +44,7 @@ class _CashSuccessScreenState extends State<CashSuccessScreen> {
         customerName: 'Walk-in Customer',
         cardType: 'Cash',
         refundSupported: false,
+    evo: null
       );
 
   Future<void> _maybeAutoPrint() async {

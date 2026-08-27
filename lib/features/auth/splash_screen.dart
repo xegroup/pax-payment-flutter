@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../core/auth/session_service.dart';
 import '../../core/network/MyApiClient.dart';
 import '../../shared/responsive/responsive.dart';
+import '../../shared/theme/paxpayment_colors.dart';
+import '../menu/checkout_payment_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -20,35 +23,60 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _routeNext() async {
     MyApiClient.init('https://api-app.xepay.co.uk/');
+    await MyApiClient.loadPersistedAuthToken();
 
-    await Future<void>.delayed(const Duration(seconds: 2));
     if (!mounted) return;
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-    );
+    try {
+      final status = await SessionService.validateStoredSession();
+      if (!mounted) return;
+
+      switch (status) {
+        case SessionStatus.authenticated:
+          Navigator.of(context).pushReplacement(
+            CheckoutPaymentScreen.materialRoute(),
+          );
+        case SessionStatus.expired:
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(
+              builder: (_) => const LoginScreen(
+                sessionMessage:
+                    'Your session has expired. Please sign in again.',
+              ),
+            ),
+          );
+        case SessionStatus.unauthenticated:
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+          );
+      }
+    } catch (_) {
+      await MyApiClient.clearAuthToken();
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final r = Responsive.of(context);
-    final titleSize = r.layout(
-      mobilePortrait: r.widthPercent(0.09, min: 26, max: 34),
-      mobileLandscape: r.widthPercent(0.07, min: 20, max: 28),
-      tabletPortrait: r.widthPercent(0.06, min: 36, max: 48),
-      tabletLandscape: r.widthPercent(0.045, min: 32, max: 44),
+    final iconSize = r.layout(
+      mobilePortrait: r.widthPercent(0.42, min: 140, max: 220),
+      mobileLandscape: r.heightPercent(0.5, min: 120, max: 180),
+      tabletPortrait: r.widthPercent(0.28, min: 180, max: 260),
+      tabletLandscape: r.heightPercent(0.45, min: 160, max: 240),
     );
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D2B5E),
+      backgroundColor: PaxPaymentColors.primaryBlue,
       body: Center(
-        child: Text(
-          'PAX PAYMENT',
-          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                color: Colors.white,
-                fontSize: titleSize,
-                fontWeight: FontWeight.w700,
-              ),
+        child: Image.asset(
+          'assets/images/xepay_icon.png',
+          width: iconSize,
+          height: iconSize,
+          fit: BoxFit.contain,
         ),
       ),
     );

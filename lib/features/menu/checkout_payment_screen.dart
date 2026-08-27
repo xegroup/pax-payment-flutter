@@ -202,19 +202,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: PaxPaymentSpacing.sp16),
-          child: TextButton(
-            onPressed: _onSplitBillPressed,
-            child: Text(
-              'Split bill',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: PaxPaymentColors.primaryBlue,
-                    fontWeight: FontWeight.w700,
-                  ),
-            ),
-          ),
-        ),
         Expanded(
           flex: 5,
           child: Padding(
@@ -962,6 +949,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           cardLast4: last4,
           evoTransactionRef: evoRef,
           storeTag: storeTag,
+          evo: null
         );
 
         if (!mounted) return;

@@ -50,9 +50,6 @@ class LocalStorage {
     return await _secure.hasLoginPassword() && await _secure.hasManagerPin();
   }
 
-  String get tid => _prefs.getString(PrefKeys.tid) ?? '';
-
-  Future<void> setTid(String v) => _prefs.setString(PrefKeys.tid, v);
 
   String get mid => _prefs.getString(PrefKeys.mid) ?? '';
 
@@ -61,6 +58,17 @@ class LocalStorage {
   String get currentStore => _prefs.getString(PrefKeys.currentStore) ?? '2Burger Bar';
 
   Future<void> setCurrentStore(String v) => _prefs.setString(PrefKeys.currentStore, v);
+
+  String get terminalName => _prefs.getString(PrefKeys.terminalName) ?? 'Terminal';
+
+  Future<void> setTerminalName(String v) =>
+      _prefs.setString(PrefKeys.terminalName, v.trim());
+
+  String get terminalID => _prefs.getString(PrefKeys.terminalId) ?? '';
+
+  Future<void> setTerminalId(String v) =>
+      _prefs.setString(PrefKeys.terminalId, v.trim());
+
 
   bool get tipsEnabled => _prefs.getBool(PrefKeys.tipsEnabled) ?? true;
 

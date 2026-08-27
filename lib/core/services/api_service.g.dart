@@ -119,16 +119,26 @@ class _ApiService implements ApiService {
   }
 
   @override
-  Future<TransactionsListResponse> getAllTransactions() async {
+  Future<TransactionsListResponse> getAllTransactions(
+    int days,
+    String status,
+    int perPage,
+    String cardLast4,
+  ) async {
     final _extra = <String, dynamic>{};
-    final queryParameters = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{
+      r'days': days,
+      r'status': status,
+      r'perPage': perPage,
+      r'q': cardLast4,
+    };
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
     final _options = _setStreamType<TransactionsListResponse>(
       Options(method: 'GET', headers: _headers, extra: _extra)
           .compose(
             _dio.options,
-            'api/app/transactions',
+            'api/app/transactions_list',
             queryParameters: queryParameters,
             data: _data,
           )
@@ -138,6 +148,33 @@ class _ApiService implements ApiService {
     late TransactionsListResponse _value;
     try {
       _value = TransactionsListResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<SessionResponse> checkSession() async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<SessionResponse>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            'api/app/auth/check',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late SessionResponse _value;
+    try {
+      _value = SessionResponse.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options, response: _result);
       rethrow;

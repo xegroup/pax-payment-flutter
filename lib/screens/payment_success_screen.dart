@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pax_payment/features/transaction/data/evo_data_model.dart';
 
 import '../core/di/injection.dart';
 import '../core/database/local_storage.dart';
@@ -18,6 +19,7 @@ class PaymentSuccessScreen extends StatefulWidget {
     required this.transactionId,
     required this.timestamp,
     this.popWithResult = false,
+    required this.evo
   });
 
   final double amount;
@@ -26,6 +28,7 @@ class PaymentSuccessScreen extends StatefulWidget {
   final String transactionId;
   final String timestamp;
   final bool popWithResult;
+  final EvoDataModel evo;
 
   @override
   State<PaymentSuccessScreen> createState() => _PaymentSuccessScreenState();
@@ -38,16 +41,18 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPrint());
   }
 
-  PaymentTransaction get _transaction => PaymentTransaction(
-        id: widget.transactionId,
-        amount: widget.amount,
-        status: PaymentStatus.success,
-        time: widget.timestamp,
-        customerName: 'Walk-in Customer',
-        cardType: widget.cardType ?? 'Visa',
-        refundSupported: true,
-        cardLast4: widget.cardLast4,
-        evoTransactionRef: widget.transactionId,
+  PaymentTransaction get _transaction =>
+      PaymentTransaction(
+          id: widget.transactionId,
+          amount: widget.amount,
+          status: PaymentStatus.success,
+          time: widget.timestamp,
+          customerName: 'Walk-in Customer',
+          cardType: widget.cardType ?? 'Visa',
+          refundSupported: true,
+          cardLast4: widget.cardLast4,
+          evoTransactionRef: widget.transactionId,
+          evo: widget.evo
       );
 
   Future<void> _maybeAutoPrint() async {
@@ -57,7 +62,9 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
   }
 
   String get _cardLine {
-    final type = widget.cardType?.trim().isNotEmpty == true
+    final type = widget.cardType
+        ?.trim()
+        .isNotEmpty == true
         ? widget.cardType!.trim()
         : 'Visa';
     final last4 = widget.cardLast4?.trim() ?? '';
@@ -71,31 +78,34 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
     final ctrl = TextEditingController();
     final sent = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Email receipt', style: PaxTextStyles.h4),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
-            labelText: 'Email address',
-            hintText: 'customer@example.com',
+      builder: (ctx) =>
+          AlertDialog(
+            title: Text('Email receipt', style: PaxTextStyles.h4),
+            content: TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email address',
+                hintText: 'customer@example.com',
+              ),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  if (ctrl.text
+                      .trim()
+                      .isEmpty) return;
+                  Navigator.pop(ctx, true);
+                },
+                child: const Text('Send'),
+              ),
+            ],
           ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (ctrl.text.trim().isEmpty) return;
-              Navigator.pop(ctx, true);
-            },
-            child: const Text('Send'),
-          ),
-        ],
-      ),
     );
     if (sent == true && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(

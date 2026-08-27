@@ -1,3 +1,5 @@
+import 'package:pax_payment/features/transaction/data/evo_data_model.dart';
+
 enum PaymentStatus { success, failed, refunded }
 
 /// Payment row / detail model used across list, reports and refund flow.
@@ -22,6 +24,8 @@ class PaymentTransaction {
   /// Store / site tag for multi-store filtering.
   final String storeTag;
 
+  final EvoDataModel? evo;
+
 
   const PaymentTransaction({
     required this.id,
@@ -36,7 +40,9 @@ class PaymentTransaction {
     this.originalTransactionId,
     this.cardLast4,
     this.evoTransactionRef,
-    this.storeTag = ''
+    this.storeTag = '',
+    required this.evo
+
   });
 
   /// Reference to send to native refund (EVO); falls back to [id].
@@ -73,7 +79,8 @@ class PaymentTransaction {
       originalTransactionId: originalTransactionId,
       cardLast4: cardLast4,
       evoTransactionRef: evoTransactionRef,
-      storeTag: storeTag
+      storeTag: storeTag,
+      evo: evo
     );
   }
 
@@ -97,7 +104,8 @@ class PaymentTransaction {
       originalTransactionId: json['originalTransactionId']?.toString(),
       cardLast4: json['cardLast4']?.toString(),
       evoTransactionRef: json['evoTransactionRef']?.toString(),
-      storeTag: (json['storeTag'] ?? '').toString()
+      storeTag: (json['storeTag'] ?? '').toString(),
+      evo: (json['evo'] ?? null) as EvoDataModel
     );
   }
 

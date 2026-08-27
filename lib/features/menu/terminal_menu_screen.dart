@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/database/local_storage.dart';
+import '../../core/di/injection.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import '../../screens/device_settings_screen.dart';
@@ -139,7 +141,42 @@ class TerminalMenuScreen extends StatelessWidget {
   }
 }
 
-class _TerminalHeader extends StatelessWidget {
+class _TerminalHeader extends StatefulWidget {
+  const _TerminalHeader();
+
+  @override
+  State<_TerminalHeader> createState() => _TerminalHeaderState();
+}
+
+class _TerminalHeaderState extends State<_TerminalHeader> {
+  late String _terminalName;
+
+  @override
+  void initState() {
+    super.initState();
+    _terminalName = sl<LocalStorage>().terminalName;
+  }
+
+  Future<void> _showEditDialog() async {
+    final saved = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _TerminalNameDialog(initialName: _terminalName),
+    );
+
+    if (saved == null || !mounted) return;
+
+    await sl<LocalStorage>().setTerminalName(saved);
+    setState(() => _terminalName = saved);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Terminal name saved'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(PaxPaymentSpacing.radiusXl);
@@ -157,7 +194,7 @@ class _TerminalHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Terminal',
+                  _terminalName,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: PaxPaymentColors.darkGrayText,
@@ -174,19 +211,74 @@ class _TerminalHeader extends StatelessWidget {
             ),
           ),
           IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Renaming terminal coming soon'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
+            onPressed: _showEditDialog,
             icon: const Icon(Icons.edit_outlined),
             color: PaxPaymentColors.primaryBlue,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TerminalNameDialog extends StatefulWidget {
+  const _TerminalNameDialog({required this.initialName});
+
+  final String initialName;
+
+  @override
+  State<_TerminalNameDialog> createState() => _TerminalNameDialogState();
+}
+
+class _TerminalNameDialogState extends State<_TerminalNameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+    Navigator.pop(context, name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Terminal name'),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        decoration: const InputDecoration(
+          labelText: 'Name',
+          hintText: 'Enter terminal name',
+        ),
+        onSubmitted: (value) {
+          if (value.trim().isNotEmpty) {
+            Navigator.pop(context, value.trim());
+          }
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _save,
+          child: const Text('Save'),
+        ),
+      ],
     );
   }
 }

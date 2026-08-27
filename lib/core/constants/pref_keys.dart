@@ -8,6 +8,8 @@ abstract final class PrefKeys {
   static const String tid = 'pref_tid';
   static const String mid = 'pref_mid';
   static const String currentStore = 'pref_current_store';
+  static const String terminalName = 'pref_terminal_name';
+  static const String terminalId = 'pref_terminal_id';
   static const String tipsEnabled = 'pref_tips_enabled';
   static const String cashEnabled = 'pref_cash_enabled';
   static const String autoPrintReceipt = 'pref_auto_print';

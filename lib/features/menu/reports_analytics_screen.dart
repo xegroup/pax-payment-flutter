@@ -44,7 +44,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
     });
 
     try {
-      final response = await MyApiClient.getAllTransactions();
+      final response = await MyApiClient.getAllTransactions(30,"",25,"");
       if (!mounted) return;
       setState(() {
         _transactions = response.data

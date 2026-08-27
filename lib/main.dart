@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app/app_route_observer.dart';
 import 'core/auth/auth_session.dart';
+import 'core/auth/session_lifecycle_watcher.dart';
 import 'core/config/app_flags.dart';
 import 'core/di/injection.dart';
 import 'features/auth/splash_screen.dart';
@@ -52,21 +53,23 @@ class PaxPaymentApp extends StatelessWidget {
     return ListenableBuilder(
       listenable: Listenable.merge([appThemeService, appLocalizationService]),
       builder: (context, _) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          navigatorKey: AuthSession.navigatorKey,
-          navigatorObservers: [appRouteObserver],
-          theme: appThemeService.lightTheme,
-          darkTheme: appThemeService.darkTheme,
-          themeMode: appThemeService.themeMode,
-          locale: appLocalizationService.currentLocale,
-          supportedLocales: appLocalizationService.supportedLocales,
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          home: const SplashScreen(),
+        return SessionLifecycleWatcher(
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            navigatorKey: AuthSession.navigatorKey,
+            navigatorObservers: [appRouteObserver],
+            theme: appThemeService.lightTheme,
+            darkTheme: appThemeService.darkTheme,
+            themeMode: appThemeService.themeMode,
+            locale: appLocalizationService.currentLocale,
+            supportedLocales: appLocalizationService.supportedLocales,
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: const SplashScreen(),
+          ),
         );
       },
     );
