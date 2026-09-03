@@ -6,7 +6,10 @@ import 'package:intl/intl.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
+import '../../core/network/MyApiClient.dart';
+import '../../features/auth/login_screen.dart';
 import '../../screens/payment_flow_helpers.dart';
+import '../../shared/responsive/responsive.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import '../../screens/split_payment_flow.dart';
@@ -138,11 +141,17 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   }
 
   PreferredSizeWidget _buildCheckoutAppBar(BuildContext context) {
-    final isAmount = _step == _BillFlowStep.amount;
+    final r = Responsive.of(context);
     return PaxPosAppBar(
-      onGoBack: isAmount
-          ? () => Navigator.of(context).maybePop()
-          : null,
+      leading: IconButton(
+        icon: const Icon(Icons.logout_rounded),
+        tooltip: 'Log out',
+        onPressed: _isProcessing ? null : () => _logout(context),
+      ),
+      logo: PaxPaymentAppIcon(
+        size: r.value(mobile: 44.0, tablet: 48.0),
+      ),
+      showTitle: false,
       onMenu: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
@@ -150,6 +159,40 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log out'),
+        content: const Text('Return to the login screen?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    setState(() => _isProcessing = true);
+    try {
+      await MyApiClient.logout();
+    } finally {
+      if (mounted) setState(() => _isProcessing = false);
+    }
+
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      (route) => false,
     );
   }
 

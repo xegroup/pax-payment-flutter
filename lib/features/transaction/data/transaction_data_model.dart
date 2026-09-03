@@ -45,6 +45,45 @@ class TransactionDataModel {
 
   Map<String, dynamic> toJson() => _$TransactionDataModelToJson(this);
 
+  /// Parses one API row, skipping malformed nested [evo] payloads.
+  static TransactionDataModel? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    final json = _normalizeJson(Map<String, dynamic>.from(raw));
+    try {
+      return TransactionDataModel.fromJson(json);
+    } catch (_) {
+      try {
+        final withoutEvo = Map<String, dynamic>.from(json)..remove('evo');
+        return TransactionDataModel.fromJson(withoutEvo);
+      } catch (_) {
+        return null;
+      }
+    }
+  }
+
+  static Map<String, dynamic> _normalizeJson(Map<String, dynamic> json) {
+    bool asBool(Object? value) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      final normalized = value?.toString().trim().toLowerCase();
+      return normalized == 'true' || normalized == '1';
+    }
+
+    return {
+      ...json,
+      'id': (json['id'] ?? '').toString(),
+      'amount': (json['amount'] as num?)?.toDouble() ?? 0,
+      'status': (json['status'] ?? '').toString(),
+      'time': (json['time'] ?? '').toString(),
+      'customerName': (json['customerName'] ?? '').toString(),
+      'cardType': (json['cardType'] ?? 'Card').toString(),
+      'refundSupported': asBool(json['refundSupported']),
+      'isRefund': asBool(json['isRefund']),
+      'isRefunded': asBool(json['isRefunded']),
+      'storeTag': (json['storeTag'] ?? '').toString(),
+    };
+  }
+
   PaymentStatus paymentStatusFromApi() {
     return switch (status.toLowerCase()) {
       'success' || 'succeeded' || 'approved' || 'completed' =>

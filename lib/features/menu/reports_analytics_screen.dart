@@ -7,8 +7,9 @@ import '../../core/network/MyApiClient.dart';
 import '../../shared/responsive/responsive.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
-import 'data/dummy_payments_data.dart';
 import 'models/payment_transaction.dart';
+import 'transaction_detail_screen.dart';
+import 'widgets/payment_status_badge.dart';
 
 enum _ReportRangePreset { last7, last30, thisMonth }
 
@@ -30,6 +31,17 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
   static final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
   static final _compact = NumberFormat('#,##0.00');
   static final _axisDay = DateFormat('d MMM');
+  static final _dateTime = DateFormat('dd/MM/yyyy HH:mm', 'en_GB');
+
+  static String _formatTransactionTime(String time) {
+    final parsed = DateTime.tryParse(time.trim());
+    if (parsed != null) {
+      return _dateTime.format(parsed.toLocal());
+    }
+    return time;
+  }
+
+  int get _apiDays => 30;
 
   @override
   void initState() {
@@ -44,7 +56,12 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
     });
 
     try {
-      final response = await MyApiClient.getAllTransactions(30,"",25,"");
+      final response = await MyApiClient.getAllTransactions(
+        _apiDays,
+        '',
+        100,
+        '',
+      );
       if (!mounted) return;
       setState(() {
         _transactions = response.data
@@ -138,21 +155,10 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
 
   Widget _buildContent(BuildContext context, Responsive r, double pad) {
     final (start, end) = _range;
-    final s = DummyPaymentsData.summary(
-      start,
-      end,
-      source: _transactions,
-    );
-    final daily = DummyPaymentsData.dailyBars(
-      start,
-      end,
-      source: _transactions,
-    );
-    final cumulative = DummyPaymentsData.cumulativeSeries(
-      start,
-      end,
-      source: _transactions,
-    );
+    final rangeTransactions = _transactionsInRange(_transactions, start, end);
+    final s = _salesSummary(rangeTransactions);
+    final daily = _dailyBars(rangeTransactions, start, end);
+    final cumulative = _cumulativeSeries(daily);
 
     final lineSpots = <FlSpot>[
       for (var i = 0; i < cumulative.length; i++)
@@ -185,7 +191,10 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
         ),
     ];
 
-    return ListView(
+    return RefreshIndicator(
+      onRefresh: _loadTransactions,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           pad,
           PaxPaymentSpacing.sp16,
@@ -208,20 +217,17 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
               _RangeChip(
                 label: 'Last 7 days',
                 selected: _preset == _ReportRangePreset.last7,
-                onTap: () =>
-                    setState(() => _preset = _ReportRangePreset.last7),
+                onTap: () => setState(() => _preset = _ReportRangePreset.last7),
               ),
               _RangeChip(
                 label: 'Last 30 days',
                 selected: _preset == _ReportRangePreset.last30,
-                onTap: () =>
-                    setState(() => _preset = _ReportRangePreset.last30),
+                onTap: () => setState(() => _preset = _ReportRangePreset.last30),
               ),
               _RangeChip(
                 label: 'This month',
                 selected: _preset == _ReportRangePreset.thisMonth,
-                onTap: () =>
-                    setState(() => _preset = _ReportRangePreset.thisMonth),
+                onTap: () => setState(() => _preset = _ReportRangePreset.thisMonth),
               ),
             ],
           ),
@@ -252,6 +258,55 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
               ),
             ],
           ),
+          SizedBox(height: r.value(mobile: PaxPaymentSpacing.sp20, tablet: PaxPaymentSpacing.sp24)),
+          Text(
+            'Sales',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: PaxPaymentColors.darkGrayText,
+                ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp4),
+          Text(
+            rangeTransactions.isEmpty
+                ? 'No sales in this range'
+                : '${rangeTransactions.length} transaction${rangeTransactions.length == 1 ? '' : 's'}',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: PaxPaymentColors.mediumGray,
+                ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp12),
+          if (rangeTransactions.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(PaxPaymentSpacing.sp24),
+              decoration: BoxDecoration(
+                color: PaxPaymentColors.white,
+                borderRadius: BorderRadius.circular(PaxPaymentSpacing.radiusXl),
+                border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+              ),
+              child: Text(
+                _transactions.isEmpty
+                    ? 'No sales data loaded yet.'
+                    : 'No sales in this date range.',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: PaxPaymentColors.mediumGray,
+                    ),
+              ),
+            )
+          else
+            ...[
+              for (final tx in rangeTransactions) ...[
+                _ReportTransactionTile(
+                  tx: tx,
+                  money: _money,
+                  formattedTime: _formatTransactionTime(tx.time),
+                  onTap: () => _openTransactionDetail(context, tx),
+                ),
+                const SizedBox(height: PaxPaymentSpacing.sp10),
+              ],
+            ],
           SizedBox(height: r.value(mobile: PaxPaymentSpacing.sp20, tablet: PaxPaymentSpacing.sp24)),
           _ChartCard(
             title: 'Sales trend',
@@ -430,6 +485,167 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openTransactionDetail(BuildContext context, PaymentTransaction tx) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => TransactionDetailScreen(transaction: tx),
+      ),
+    );
+  }
+}
+
+List<PaymentTransaction> _transactionsInRange(
+  List<PaymentTransaction> source,
+  DateTime start,
+  DateTime end,
+) {
+  final startDay = DateTime(start.year, start.month, start.day);
+  final endDay = DateTime(end.year, end.month, end.day);
+  return source.where((transaction) {
+    final txDate = _calendarDate(transaction.time);
+    return !txDate.isBefore(startDay) && !txDate.isAfter(endDay);
+  }).toList();
+}
+
+DateTime _calendarDate(String time) {
+  final trimmed = time.trim();
+  if (trimmed.length >= 10 && trimmed[4] == '-' && trimmed[7] == '-') {
+    final year = int.tryParse(trimmed.substring(0, 4));
+    final month = int.tryParse(trimmed.substring(5, 7));
+    final day = int.tryParse(trimmed.substring(8, 10));
+    if (year != null && month != null && day != null) {
+      return DateTime(year, month, day);
+    }
+  }
+  final parsed = DateTime.tryParse(trimmed);
+  if (parsed != null) {
+    final local = parsed.toLocal();
+    return DateTime(local.year, local.month, local.day);
+  }
+  return DateTime.fromMillisecondsSinceEpoch(0);
+}
+
+({double total, int count, double avg}) _salesSummary(
+  List<PaymentTransaction> transactions,
+) {
+  final successful = transactions
+      .where((transaction) => transaction.status == PaymentStatus.success)
+      .toList();
+  final total = successful.fold<double>(0, (sum, tx) => sum + tx.amount);
+  final count = successful.length;
+  final avg = count == 0 ? 0.0 : total / count;
+  return (total: total, count: count, avg: avg);
+}
+
+List<(DateTime day, double amount)> _dailyBars(
+  List<PaymentTransaction> transactions,
+  DateTime rangeStart,
+  DateTime rangeEnd,
+) {
+  final totals = <DateTime, double>{};
+  for (final transaction in transactions) {
+    final day = _calendarDate(transaction.time);
+    totals[day] = (totals[day] ?? 0) + transaction.amount;
+  }
+
+  final start = DateTime(rangeStart.year, rangeStart.month, rangeStart.day);
+  final end = DateTime(rangeEnd.year, rangeEnd.month, rangeEnd.day);
+  final bars = <(DateTime, double)>[];
+  for (var day = start; !day.isAfter(end); day = day.add(const Duration(days: 1))) {
+    final key = DateTime(day.year, day.month, day.day);
+    bars.add((key, totals[key] ?? 0));
+  }
+  return bars;
+}
+
+List<(DateTime day, double cumulative)> _cumulativeSeries(
+  List<(DateTime day, double amount)> daily,
+) {
+  var runningTotal = 0.0;
+  return daily.map((entry) {
+    runningTotal += entry.$2;
+    return (entry.$1, runningTotal);
+  }).toList();
+}
+
+class _ReportTransactionTile extends StatelessWidget {
+  final PaymentTransaction tx;
+  final NumberFormat money;
+  final String formattedTime;
+  final VoidCallback onTap;
+
+  const _ReportTransactionTile({
+    required this.tx,
+    required this.money,
+    required this.formattedTime,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(PaxPaymentSpacing.radiusLg);
+    return Material(
+      color: PaxPaymentColors.white,
+      borderRadius: radius,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: radius,
+        child: Container(
+          padding: const EdgeInsets.all(PaxPaymentSpacing.sp12),
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      money.format(tx.amount),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: PaxPaymentColors.darkGrayText,
+                          ),
+                    ),
+                  ),
+                  PaymentStatusBadge(
+                    status: tx.status,
+                    compact: true,
+                    isRefund: tx.isRefund,
+                    isRefunded: tx.isRefunded,
+                  ),
+                ],
+              ),
+              const SizedBox(height: PaxPaymentSpacing.sp10),
+              Text(
+                tx.customerName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: PaxPaymentColors.darkGrayText,
+                    ),
+              ),
+              const SizedBox(height: PaxPaymentSpacing.sp4),
+              Text(
+                formattedTime,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: PaxPaymentColors.mediumGray,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:pax_payment/features/auth/data/logout_response.dart';
 import 'package:pax_payment/features/transaction/data/transaction_request.dart';
 import 'package:pax_payment/features/transaction/data/transaction_response.dart';
 import 'package:pax_payment/features/transaction/data/transactions_list_response.dart';
@@ -28,6 +29,10 @@ abstract class ApiService {
   Future<TransactionResponse> saveTransaction(
     @Body() TransactionRequest body,
   );
+
+  @POST("api/app/auth/logout")
+  @DioResponseType(ResponseType.plain)
+  Future<LogoutResponse> logout();
 
   @GET("api/app/transactions_list")
   Future<TransactionsListResponse> getAllTransactions(

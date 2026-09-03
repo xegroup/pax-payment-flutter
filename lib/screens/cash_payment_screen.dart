@@ -63,25 +63,6 @@ class _CashPaymentScreenState extends State<CashPaymentScreen> {
     await saveCashTransaction(
       amount: widget.totalAmount,
       transactionId: txnId,
-      slipNumber: 0,
-      terminalId: 0,
-      transactionCurrency: '',
-      result: -1,
-      authorizationMessage: '',
-      merchantId: '',
-      AC: '',
-      AID: '',
-      ATC: '',
-      TSI: '',
-      TVR: '',
-      date: '',
-      maskedCardNumber: '',
-      transactionTitle: '',
-      cardSource: '',
-      cardBrandName: '',
-      cardsetName: '',
-      serverMessage: '',
-      transactionAmount: 0,
     );
     if (!mounted) return;
     final route = MaterialPageRoute<bool>(

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/network/MyApiClient.dart';
+import '../../core/security/manager_pin_gate.dart';
+import '../../core/services/payment_service.dart';
 import '../../shared/responsive/responsive.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
@@ -27,6 +29,8 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   List<PaymentTransaction> _transactions = [];
   bool _isLoading = true;
   String? _errorMessage;
+  String? _refundingId;
+  final _paymentService = PaymentService();
 
   static final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
   static final _dateTime = DateFormat('dd/MM/yyyy HH:mm', 'en_GB');
@@ -317,7 +321,10 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             tx: tx,
             money: _money,
             formattedTime: _formatTransactionTime(tx.time),
+            canRefund: _canRefund(tx),
+            isRefunding: _refundingId == tx.id,
             onTap: () => _openTransactionDetail(context, tx),
+            onRefund: () => _confirmRefund(context, tx),
           );
         },
       ),
@@ -330,6 +337,119 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
         builder: (_) => TransactionDetailScreen(transaction: tx),
       ),
     );
+  }
+
+  bool _canRefund(PaymentTransaction tx) {
+    return !tx.isRefund &&
+        !tx.isRefunded &&
+        tx.refundSupported &&
+        tx.status == PaymentStatus.success;
+  }
+
+  Future<void> _confirmRefund(
+    BuildContext context,
+    PaymentTransaction tx,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Refund payment?'),
+        content: Text(
+          'Refund ${_money.format(tx.amount)} for transaction ${tx.id}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Refund'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    final pinOk = await verifyManagerPin(
+      context,
+      reason: 'Manager PIN is required to process a refund.',
+    );
+    if (!pinOk || !mounted) return;
+
+    await _runRefund(tx);
+  }
+
+  Future<void> _runRefund(PaymentTransaction tx) async {
+    setState(() => _refundingId = tx.id);
+    try {
+      final amountCents = (tx.amount * 100).round();
+      final originalId = tx.refundOriginalId;
+      final result = await _paymentService.startRefund(
+        amount: amountCents,
+        originalTransactionId: originalId,
+        title: 'Refund $originalId',
+      );
+      final statusValue = (result['status'] ?? '').toString().toLowerCase();
+      final success = statusValue == 'success' ||
+          statusValue == 'approved' ||
+          statusValue == 'ok' ||
+          statusValue == 'completed' ||
+          statusValue == 'true';
+      if (success) {
+        await DummyPaymentsData.markTransactionRefunded(tx.id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Refund completed'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        await _loadTransactions();
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Refund failed'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } on PaymentServiceException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'ios_payment_not_supported' || e.code == 'missing_plugin') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.message.isNotEmpty
+                  ? e.message
+                  : 'Refund not available on this device.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        final cancelled = e.code == 'PAYMENT_CANCELLED';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(cancelled ? 'Refund cancelled' : 'Refund failed'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Refund failed'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _refundingId = null);
+      }
+    }
   }
 }
 
@@ -419,13 +539,19 @@ class _PaymentGridTile extends StatelessWidget {
   final PaymentTransaction tx;
   final NumberFormat money;
   final String formattedTime;
+  final bool canRefund;
+  final bool isRefunding;
   final VoidCallback onTap;
+  final VoidCallback onRefund;
 
   const _PaymentGridTile({
     required this.tx,
     required this.money,
     required this.formattedTime,
+    required this.canRefund,
+    required this.isRefunding,
     required this.onTap,
+    required this.onRefund,
   });
 
   @override
@@ -434,59 +560,89 @@ class _PaymentGridTile extends StatelessWidget {
     return Material(
       color: PaxPaymentColors.white,
       borderRadius: radius,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: radius,
-        child: Container(
-          padding: const EdgeInsets.all(PaxPaymentSpacing.sp12),
-          decoration: BoxDecoration(
-            borderRadius: radius,
-            border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      money.format(tx.amount),
-                      maxLines: 1,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.vertical(top: radius.topLeft),
+              child: Padding(
+                padding: const EdgeInsets.all(PaxPaymentSpacing.sp12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            money.format(tx.amount),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: PaxPaymentColors.darkGrayText,
+                                ),
+                          ),
+                        ),
+                        PaymentStatusBadge(
+                          status: tx.status,
+                          compact: true,
+                          isRefund: tx.isRefund,
+                          isRefunded: tx.isRefunded,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: PaxPaymentSpacing.sp10),
+                    Text(
+                      tx.customerName,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
                             color: PaxPaymentColors.darkGrayText,
                           ),
                     ),
-                  ),
-                  PaymentStatusBadge(
-                    status: tx.status,
-                    compact: true,
-                    isRefund: tx.isRefund,
-                    isRefunded: tx.isRefunded,
-                  ),
-                ],
-              ),
-              const SizedBox(height: PaxPaymentSpacing.sp10),
-              Text(
-                tx.customerName,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: PaxPaymentColors.darkGrayText,
+                    const SizedBox(height: PaxPaymentSpacing.sp4),
+                    Text(
+                      formattedTime,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: PaxPaymentColors.mediumGray,
+                          ),
                     ),
+                  ],
+                ),
               ),
-              const SizedBox(height: PaxPaymentSpacing.sp4),
-              Text(
-                formattedTime,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: PaxPaymentColors.mediumGray,
+            ),
+            if (canRefund)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  PaxPaymentSpacing.sp12,
+                  0,
+                  PaxPaymentSpacing.sp12,
+                  PaxPaymentSpacing.sp12,
+                ),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: isRefunding ? null : onRefund,
+                    style: TextButton.styleFrom(
+                      foregroundColor: PaxPaymentColors.primaryBlue,
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
                     ),
+                    child: Text(isRefunding ? 'Processing…' : 'Refund'),
+                  ),
+                ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
