@@ -163,10 +163,11 @@ class DummyPaymentsData {
     List<PaymentTransaction>? source,
   }) {
     final data = source ?? all;
-    final endDay = DateTime(end.year, end.month, end.day, 23, 59, 59);
+    final startDay = DateTime(start.year, start.month, start.day);
+    final endDay = DateTime(end.year, end.month, end.day);
     var list = data.where((e) {
-      final parsed = _parsedTime(e.time);
-      return !parsed.isBefore(start) && !parsed.isAfter(endDay);
+      final txDate = _calendarDate(e.time);
+      return !txDate.isBefore(startDay) && !txDate.isAfter(endDay);
     }).toList();
     if (storeFilter != null && storeFilter.isNotEmpty) {
       list = list.where((e) => _storeMatches(e, storeFilter)).toList();

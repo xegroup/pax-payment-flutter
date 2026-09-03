@@ -79,8 +79,8 @@ class TransactionRequest {
 
   factory TransactionRequest.forCardPayment({
     required double amount,
-    required String status,
-    required String transactionId,
+    String? status,
+    required String? transactionId,
     required String? cardType,
     required String? time,
     required String? customerName,
@@ -106,9 +106,9 @@ class TransactionRequest {
     required String cardBrandName,
     required String cardsetName,
     required String serverMessage,
-    required double transactionAmount
+    required double transactionAmount,
   }) {
-    final id = transactionId.trim().isNotEmpty
+    final id = transactionId!.trim().isNotEmpty
         ? transactionId.trim()
         : 'TXN-${DateTime.now().millisecondsSinceEpoch}';
     final resolvedTime = time?.trim().isNotEmpty == true
@@ -121,7 +121,7 @@ class TransactionRequest {
     return TransactionRequest(
       id: id,
       amount: (amount * 100).round(),
-      status: status,
+      status: status ?? "NA",
       time: resolvedTime,
       customerName: customerName ?? 'Walk-in Customer',
       cardType: cardType ?? 'Card',
@@ -147,7 +147,7 @@ class TransactionRequest {
       cardBrandName: cardBrandName,
       cardsetName: cardsetName,
       serverMessage: serverMessage,
-      transactionAmount: transactionAmount
+      transactionAmount: transactionAmount,
     );
   }
 }

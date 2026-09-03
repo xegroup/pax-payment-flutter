@@ -4,6 +4,31 @@ import '../responsive/responsive.dart';
 import '../theme/pax_colors.dart';
 import '../theme/pax_text_styles.dart';
 
+/// Branded app icon for Pax Payment checkout / splash.
+class PaxPaymentAppIcon extends StatelessWidget {
+  const PaxPaymentAppIcon({super.key, this.size});
+
+  /// Defaults to 32 on phone, 36 on tablet.
+  final double? size;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Responsive.of(context);
+    final double side = size ?? r.value(mobile: 32.0, tablet: 36.0);
+    final radius = side * 0.22;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Image.asset(
+        'assets/images/xepay_icon.png',
+        width: side,
+        height: side,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+}
+
 /// Branded mark for Pax Payment (replaces legacy third-party “Y” logo).
 class PaxPaymentLogoMark extends StatelessWidget {
   const PaxPaymentLogoMark({super.key, this.size});
@@ -85,16 +110,22 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     this.onGoBack,
     this.onMenu,
+    this.leading,
+    this.logo,
     this.leadingLabel = 'Go back',
     this.title = 'POS',
+    this.showTitle = true,
     this.trailing = const [],
     this.compactWidth = 380,
   });
 
   final VoidCallback? onGoBack;
   final VoidCallback? onMenu;
+  final Widget? leading;
+  final Widget? logo;
   final String leadingLabel;
   final String title;
+  final bool showTitle;
   final List<Widget> trailing;
   final double compactWidth;
 
@@ -124,13 +155,14 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
                   width: compact ? 44 : 108,
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: onGoBack != null
-                        ? _BackControl(
-                            onPressed: onGoBack!,
-                            label: leadingLabel,
-                            showLabel: showBackLabel,
-                          )
-                        : const SizedBox.shrink(),
+                    child: leading ??
+                        (onGoBack != null
+                            ? _BackControl(
+                                onPressed: onGoBack!,
+                                label: leadingLabel,
+                                showLabel: showBackLabel,
+                              )
+                            : const SizedBox.shrink()),
                   ),
                 ),
                 Expanded(
@@ -140,17 +172,19 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const PaxPaymentLogoMark(),
-                          SizedBox(width: r.value(mobile: 8.0, tablet: 10.0)),
-                          Text(
-                            title,
-                            style: PaxTextStyles.bodySemiBold.copyWith(
-                              color: PaxColors.grey800,
-                              fontSize: r.value(mobile: 16.0, tablet: 17.0),
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.2,
+                          logo ?? const PaxPaymentLogoMark(),
+                          if (showTitle) ...[
+                            SizedBox(width: r.value(mobile: 8.0, tablet: 10.0)),
+                            Text(
+                              title,
+                              style: PaxTextStyles.bodySemiBold.copyWith(
+                                color: PaxColors.grey800,
+                                fontSize: r.value(mobile: 16.0, tablet: 17.0),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),

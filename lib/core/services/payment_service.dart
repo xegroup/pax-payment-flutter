@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -56,9 +56,9 @@ class PaymentService {
         'date': DateTime.now().toIso8601String(),
         'paymentMethod': 'cash',
       };
-      await saveTransactionFromEvoResult(
-        result,
-        amountMajor: amount / 100.0,
+      await saveCashTransaction(
+        amount: amount / 100.0,
+        transactionId: result['transactionId'] as String,
       );
       return result;
     }
@@ -91,12 +91,19 @@ class PaymentService {
       final result = rawResult.map(
         (key, value) => MapEntry(key.toString(), value),
       );
-      await saveTransactionFromEvoResult(
+
+      // Reliable save path: Flutter calls API after native returns EVO payload.
+      await saveEvoPaymentResult(
         result,
-        amountMajor: amount / 100.0,
+        amountCents: amount,
       );
+
       return result;
     } on PlatformException catch (e) {
+      if (e.code == 'PAYMENT_FAILED' && e.details is Map) {
+        final details = Map<String, dynamic>.from(e.details as Map);
+        await saveEvoPaymentResult(details, amountCents: amount);
+      }
       if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {
         throw PaymentServiceException(
           e.message ?? 'Card payments are not available on this device.',
@@ -174,12 +181,14 @@ class PaymentService {
         );
       }
       final result = rawResult.map((key, value) => MapEntry(key.toString(), value));
-      await saveTransactionFromEvoResult(
+
+      await saveEvoPaymentResult(
         result,
-        amountMajor: amount / 100.0,
+        amountCents: amount,
         isRefund: true,
         originalTransactionId: originalTransactionId,
       );
+
       return result;
     } on PlatformException catch (e) {
       if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {

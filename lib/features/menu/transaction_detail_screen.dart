@@ -27,6 +27,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   final _paymentService = PaymentService();
   bool _isRefunding = false;
 
+  static String _formatTransactionTime(String time) {
+    final parsed = DateTime.tryParse(time.trim());
+    if (parsed != null) {
+      return _full.format(parsed.toLocal());
+    }
+    return time;
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = widget.transaction;
@@ -75,7 +83,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                 ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp12),
-          _DetailRow(label: 'Date', value:t.time),
+          _DetailRow(label: 'Date', value: _formatTransactionTime(t.time)),
           _DetailRow(
             label: 'Card',
             value: '${t.cardType} ${t.maskedLast4Display}',

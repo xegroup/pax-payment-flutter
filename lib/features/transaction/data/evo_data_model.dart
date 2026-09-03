@@ -26,6 +26,7 @@ class EvoDataModel {
   final String serverMessage;
   final double transactionAmount;
 
+
   EvoDataModel({
     required this.slipNumber,
     required this.terminalId,

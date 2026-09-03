@@ -53,7 +53,7 @@ class LocalStorage {
 
   String get mid => _prefs.getString(PrefKeys.mid) ?? '';
 
-  Future<void> setMid(String v) => _prefs.setString(PrefKeys.mid, v);
+  Future<void> setMid(String v) => _prefs.setString(PrefKeys.mid, v.trim());
 
   String get currentStore => _prefs.getString(PrefKeys.currentStore) ?? '2Burger Bar';
 

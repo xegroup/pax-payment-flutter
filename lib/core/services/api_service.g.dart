@@ -119,6 +119,38 @@ class _ApiService implements ApiService {
   }
 
   @override
+  Future<LogoutResponse> logout() async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<LogoutResponse>(
+      Options(
+            method: 'POST',
+            headers: _headers,
+            extra: _extra,
+            responseType: ResponseType.plain,
+          )
+          .compose(
+            _dio.options,
+            'api/app/auth/logout',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
+    late LogoutResponse _value;
+    try {
+      _value = LogoutResponse.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
   Future<TransactionsListResponse> getAllTransactions(
     int days,
     String status,
