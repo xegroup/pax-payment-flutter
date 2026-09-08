@@ -18,7 +18,7 @@ class MainActivity : FlutterFragmentActivity() {
     private val evoPackageName = "com.evopayments.payiso"
     private val evoClassName = "com.evopayments.payiso.MainActivity"
     private val evoActionPerformTransaction = "com.evopayments.payiso.PERFORM_TRANSACTION"
-    private val evoActionRefundTransaction = "com.evopayments.payiso.REFUND_TRANSACTION"
+//    private val evoActionRefundTransaction = "com.evopayments.payiso.REFUND_TRANSACTION"
 
     private var pendingResult: MethodChannel.Result? = null
     private var pendingOperation: String = "sale"
@@ -108,7 +108,13 @@ class MainActivity : FlutterFragmentActivity() {
                         pendingOperation = "refund"
                         pendingAmountCents = amount
                         pendingOriginalTransactionId = originalTransactionId
-                        startEvoRefund(amount, title, originalTransactionId)
+                        val slipNumber = call.argument<Int>("slipNumber") ?: 0
+                        startEvoRefund(
+                            amount = amount,
+                            title = title,
+                            refId = originalTransactionId,
+                            slipNumber = slipNumber,
+                        )
                     }
 
                     else -> result.notImplemented()
@@ -172,14 +178,26 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
-    private fun startEvoRefund(amount: Int, title: String, originalTransactionId: String) {
+    private fun startEvoRefund(
+        amount: Int,
+        title: String,
+        refId: String,
+        slipNumber: Int,
+        blikCode: String = "",
+        tipAmount: Long = 0L,
+        cashbackAmount: Long = 0L,
+    ) {
         val intent = Intent().apply {
             setClassName(evoPackageName, evoClassName)
-            action = evoActionRefundTransaction
-            putExtra("type", "2")
+            action = evoActionPerformTransaction
+            putExtra("type", "6")
             putExtra("amount", amount.toString())
             putExtra("title", title)
-            putExtra("originalTransactionId", originalTransactionId)
+            putExtra("blikCode", blikCode)
+            putExtra("tipAmount", tipAmount)
+            putExtra("cashbackAmount", cashbackAmount)
+            putExtra("referenceId", refId)
+            putExtra("slipNumber", slipNumber)
         }
 
         try {

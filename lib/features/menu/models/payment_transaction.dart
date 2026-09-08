@@ -51,6 +51,8 @@ class PaymentTransaction {
           ? evoTransactionRef!.trim()
           : id.trim();
 
+  int get refundSlipNumber => evo?.slipNumber.round() ?? 0;
+
   String get maskedLast4Display {
     final d = cardLast4?.trim() ?? '';
     if (d.length >= 4) {

@@ -1,10 +1,12 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
+import '../../core/network/MyApiClient.dart';
+import '../../features/auth/data/settings_model.dart';
 import '../../core/security/manager_pin_gate.dart';
 import '../../screens/payment_settings_screen.dart';
-import '../../main.dart';
 import 'data/dummy_payments_data.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
@@ -27,20 +29,6 @@ class SettingsScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(PaxPaymentSpacing.sp16),
         children: [
-          _SectionCard(
-            title: 'Language',
-            subtitle: 'App display language (${appLocalizationService.currentLocale})',
-            icon: Icons.language_outlined,
-            onTap: () => _pickLanguage(context),
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          _SectionCard(
-            title: 'Change password',
-            subtitle: 'Update login password for this device.',
-            icon: Icons.password_outlined,
-            onTap: () => _changePassword(context),
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
           _SectionCard(
             title: 'Change manager PIN',
             subtitle: 'PIN used for sensitive terminal actions.',
@@ -83,83 +71,7 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  static Future<void> _changePassword(BuildContext context) async {
-    final storage = sl<LocalStorage>();
-    final currentCtrl = TextEditingController();
-    final nextCtrl = TextEditingController();
-    final confirmCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Change password'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: currentCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current password'),
-              ),
-              TextField(
-                controller: nextCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New password'),
-              ),
-              TextField(
-                controller: confirmCtrl,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm new password'),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final valid = await storage.verifyLoginPassword(
-                currentCtrl.text.trim(),
-              );
-              if (!valid) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Current password incorrect')),
-                  );
-                }
-                return;
-              }
-              if (nextCtrl.text.isEmpty || nextCtrl.text != confirmCtrl.text) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('New passwords do not match')),
-                  );
-                }
-                return;
-              }
-              if (ctx.mounted) Navigator.pop(ctx, true);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
-      final newPass = nextCtrl.text.trim();
-      await storage.setLoginPassword(newPass);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password updated')),
-        );
-      }
-    }
-    currentCtrl.dispose();
-    nextCtrl.dispose();
-    confirmCtrl.dispose();
-  }
-
   static Future<void> _changeManagerPin(BuildContext context) async {
-    final storage = sl<LocalStorage>();
     final currentCtrl = TextEditingController();
     final nextCtrl = TextEditingController();
     final ok = await showDialog<bool>(
@@ -185,18 +97,10 @@ class SettingsScreen extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
             onPressed: () async {
-              final valid = await storage.verifyManagerPin(
-                currentCtrl.text.trim(),
-              );
-              if (!valid) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Current PIN incorrect')),
-                  );
-                }
-                return;
-              }
-              if (nextCtrl.text.trim().length < 4) {
+              final currentPin = currentCtrl.text.trim();
+              final newPin = nextCtrl.text.trim();
+
+              if (newPin.length < 4) {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx).showSnackBar(
                     const SnackBar(
@@ -206,24 +110,66 @@ class SettingsScreen extends StatelessWidget {
                 }
                 return;
               }
-              if (ctx.mounted) Navigator.pop(ctx, true);
+
+              try {
+                final settings = await MyApiClient.getSettings();
+                final storedPin = settings.settings?.managerPin?.trim() ?? '';
+                if (storedPin.isEmpty || storedPin != currentPin) {
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      const SnackBar(content: Text('Current PIN incorrect')),
+                    );
+                  }
+                  return;
+                }
+
+                await MyApiClient.saveSettings(
+                  SettingsModel(
+                    tipEnabled: settings.settings?.tipEnabled ?? false,
+                    cashPaymentEnabled:
+                        settings.settings?.cashPaymentEnabled ?? false,
+                    managerPin: newPin,
+                  ),
+                );
+                await sl<LocalStorage>().setManagerPin(newPin);
+                if (!ctx.mounted) return;
+                Navigator.pop(ctx, true);
+              } on DioException catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        e.message?.trim().isNotEmpty == true
+                            ? e.message!.trim()
+                            : 'Failed to save manager PIN',
+                      ),
+                    ),
+                  );
+                }
+              } catch (_) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to save manager PIN'),
+                    ),
+                  );
+                }
+              }
             },
             child: const Text('Save'),
           ),
         ],
       ),
     );
-    if (ok == true) {
-      final newPin = nextCtrl.text.trim();
-      await storage.setManagerPin(newPin);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Manager PIN updated')),
-        );
-      }
+    if (ok == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Manager PIN updated')),
+      );
     }
-    currentCtrl.dispose();
-    nextCtrl.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      currentCtrl.dispose();
+      nextCtrl.dispose();
+    });
   }
 
   static Future<void> _resetTransactions(BuildContext context) async {
@@ -264,25 +210,6 @@ class SettingsScreen extends StatelessWidget {
         behavior: SnackBarBehavior.floating,
       ),
     );
-  }
-
-  static Future<void> _pickLanguage(BuildContext context) async {
-    final picked = await showDialog<Locale>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Language'),
-        children: [
-          for (final l in appLocalizationService.supportedLocales)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, l),
-              child: Text('${l.languageCode}_${l.countryCode}'),
-            ),
-        ],
-      ),
-    );
-    if (picked != null) {
-      appLocalizationService.setLocale(picked);
-    }
   }
 }
 

@@ -148,10 +148,11 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
         tooltip: 'Log out',
         onPressed: _isProcessing ? null : () => _logout(context),
       ),
-      logo: PaxPaymentAppIcon(
-        size: r.value(mobile: 44.0, tablet: 48.0),
+      logo: PaxPaymentLogo(
+        height: r.value(mobile: 36.0, tablet: 40.0),
       ),
       showTitle: false,
+      centerLogo: true,
       onMenu: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(

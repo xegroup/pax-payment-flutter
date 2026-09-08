@@ -144,6 +144,7 @@ class PaymentService {
     required int amount,
     required String originalTransactionId,
     String title = '',
+    int slipNumber = 0,
   }) async {
     if (amount <= 0) {
       throw const PaymentServiceException(
@@ -162,6 +163,7 @@ class PaymentService {
       'amount': amount,
       'title': title,
       'originalTransactionId': originalTransactionId,
+      'slipNumber': slipNumber,
     };
 
     try {
@@ -191,6 +193,15 @@ class PaymentService {
 
       return result;
     } on PlatformException catch (e) {
+      if (e.code == 'PAYMENT_FAILED' && e.details is Map) {
+        final details = Map<String, dynamic>.from(e.details as Map);
+        await saveEvoPaymentResult(
+          details,
+          amountCents: amount,
+          isRefund: true,
+          originalTransactionId: originalTransactionId,
+        );
+      }
       if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {
         throw PaymentServiceException(
           e.message ?? 'Refunds are not available on this device.',

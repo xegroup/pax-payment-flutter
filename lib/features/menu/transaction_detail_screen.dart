@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../core/security/manager_pin_gate.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
-import '../../core/services/payment_service.dart';
-import 'data/dummy_payments_data.dart';
 import 'models/payment_transaction.dart';
 
 /// Full payment detail + practical actions.
-class TransactionDetailScreen extends StatefulWidget {
+class TransactionDetailScreen extends StatelessWidget {
   final PaymentTransaction transaction;
 
   const TransactionDetailScreen({
@@ -17,15 +14,8 @@ class TransactionDetailScreen extends StatefulWidget {
     required this.transaction,
   });
 
-  @override
-  State<TransactionDetailScreen> createState() => _TransactionDetailScreenState();
-}
-
-class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   static final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
   static final _full = DateFormat('dd/MM/yyyy HH:mm', 'en_GB');
-  final _paymentService = PaymentService();
-  bool _isRefunding = false;
 
   static String _formatTransactionTime(String time) {
     final parsed = DateTime.tryParse(time.trim());
@@ -37,11 +27,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = widget.transaction;
-    final canRefund = !t.isRefund &&
-        !t.isRefunded &&
-        t.refundSupported &&
-        t.status == PaymentStatus.success;
+    final t = transaction;
     final amountText = _money.format(t.amount.abs());
 
     return Scaffold(
@@ -66,13 +52,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                       : TextDecoration.none,
                 ),
           ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          if (canRefund || t.isRefund || t.amount < 0)
-            FilledButton.tonalIcon(
-              onPressed: _isRefunding ? null : () => _confirmRefund(context),
-              icon: const Icon(Icons.subdirectory_arrow_left_rounded),
-              label: Text(_isRefunding ? 'Processing...' : 'Payment void'),
-            ),
           const SizedBox(height: PaxPaymentSpacing.sp24),
           Text(
             'TRANSACTION DETAILS',
@@ -153,107 +132,6 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _confirmRefund(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Refund payment?'),
-        content: Text(
-          'Refund ${_money.format(widget.transaction.amount)} for transaction ${widget.transaction.id}?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Refund'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true || !mounted) return;
-    final pinOk = await verifyManagerPin(
-      context,
-      reason: 'Manager PIN is required to process a refund.',
-    );
-    if (!pinOk || !mounted) return;
-    await _runRefund();
-  }
-
-  Future<void> _runRefund() async {
-    setState(() => _isRefunding = true);
-    try {
-      final amountCents = (widget.transaction.amount * 100).round();
-      // TODO(EVO): Ensure [refundOriginalId] matches the gateway reference EVO expects (may differ from local row id).
-      final originalId = widget.transaction.refundOriginalId;
-      final result = await _paymentService.startRefund(
-        amount: amountCents,
-        originalTransactionId: originalId,
-        title: 'Refund $originalId',
-      );
-      final statusValue = (result['status'] ?? '').toString().toLowerCase();
-      final success = statusValue == 'success' ||
-          statusValue == 'approved' ||
-          statusValue == 'ok' ||
-          statusValue == 'completed' ||
-          statusValue == 'true';
-      if (success) {
-        await DummyPaymentsData.markTransactionRefunded(widget.transaction.id);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Refund completed'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Refund failed'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } on PaymentServiceException catch (e) {
-      if (!mounted) return;
-      if (e.code == 'ios_payment_not_supported' || e.code == 'missing_plugin') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.message.isNotEmpty
-                  ? e.message
-                  : 'Refund not available on this device.',
-            ),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        final cancelled = e.code == 'PAYMENT_CANCELLED';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(cancelled ? 'Refund cancelled' : 'Refund failed'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Refund failed'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isRefunding = false);
-      }
-    }
   }
 }
 
