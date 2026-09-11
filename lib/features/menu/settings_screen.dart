@@ -99,7 +99,6 @@ class SettingsScreen extends StatelessWidget {
             onPressed: () async {
               final currentPin = currentCtrl.text.trim();
               final newPin = nextCtrl.text.trim();
-
               if (newPin.length < 4) {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx).showSnackBar(

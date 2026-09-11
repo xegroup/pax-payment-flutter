@@ -1,8 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../core/di/injection.dart';
 import '../core/database/local_storage.dart';
+import '../core/network/MyApiClient.dart';
 import '../core/security/manager_pin_gate.dart';
+import '../features/auth/data/settings_model.dart';
 import '../shared/theme/paxpayment_colors.dart';
 import '../shared/theme/paxpayment_spacing.dart';
 
@@ -19,6 +22,7 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
   late bool _cashEnabled;
   late bool _autoPrint;
   late String _receiptType;
+  bool _isSaving = false;
 
   static const _receiptOptions = <({String value, String label})>[
     (value: 'print', label: 'Print'),
@@ -46,6 +50,51 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
     return _receiptOptions.first.label;
   }
 
+  Future<void> _savePaymentSettings() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await MyApiClient.saveSettings(
+        SettingsModel(
+          tipEnabled: _tipsEnabled,
+          cashPaymentEnabled: _cashEnabled,
+        ),
+      );
+      await _storage.setTipsEnabled(_tipsEnabled);
+      await _storage.setCashEnabled(_cashEnabled);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Payment settings saved'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message?.trim().isNotEmpty == true
+                ? e.message!.trim()
+                : 'Failed to save payment settings',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to save payment settings'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -65,10 +114,7 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
               title: const Text('Enable tips'),
               subtitle: const Text('Show tip screen before payment'),
               value: _tipsEnabled,
-              onChanged: (v) {
-                setState(() => _tipsEnabled = v);
-                _storage.setTipsEnabled(v);
-              },
+              onChanged: (v) => setState(() => _tipsEnabled = v),
             ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
@@ -77,10 +123,7 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
               title: const Text('Enable cash payments'),
               subtitle: const Text('Allow cash as a payment method'),
               value: _cashEnabled,
-              onChanged: (v) {
-                setState(() => _cashEnabled = v);
-                _storage.setCashEnabled(v);
-              },
+              onChanged: (v) => setState(() => _cashEnabled = v),
             ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
@@ -103,6 +146,20 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: _pickReceiptType,
             ),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp16),
+          FilledButton(
+            onPressed: _isSaving ? null : _savePaymentSettings,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
+            child: _isSaving
+                ? const SizedBox(
+                    height: 22,
+                    width: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Save'),
           ),
         ],
       ),

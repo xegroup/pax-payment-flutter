@@ -1,8 +1,11 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../core/di/injection.dart';
 import '../core/database/local_storage.dart';
+import '../core/network/MyApiClient.dart';
+import '../features/auth/data/settings_model.dart';
 import '../shared/theme/paxpayment_colors.dart';
 import '../shared/theme/paxpayment_spacing.dart';
 
@@ -42,10 +45,17 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
         title: 'Terminal ID',
         hintText: 'Enter terminal ID',
         saveLabel: 'Terminal ID saved',
-        onSaved: (value) async {
-          await sl<LocalStorage>().setTerminalId(value);
-          setState(() => _tid = value);
-        },
+        onSaved: (value) => _saveDeviceSetting(
+          value: value,
+          saveLocal: (v) => sl<LocalStorage>().setTerminalId(v),
+          updateState: (v) => setState(() => _tid = v),
+          buildPayload: (current, v) => SettingsModel(
+            tipEnabled: current?.tipEnabled ?? sl<LocalStorage>().tipsEnabled,
+            cashPaymentEnabled:
+                current?.cashPaymentEnabled ?? sl<LocalStorage>().cashEnabled,
+            terminalId: v,
+          ),
+        ),
       );
 
   Future<void> _editMerchantId() => _editStoredValue(
@@ -53,11 +63,33 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
         title: 'Merchant ID',
         hintText: 'Enter merchant ID',
         saveLabel: 'Merchant ID saved',
-        onSaved: (value) async {
-          await sl<LocalStorage>().setMid(value);
-          setState(() => _mid = value);
-        },
+        onSaved: (value) => _saveDeviceSetting(
+          value: value,
+          saveLocal: (v) => sl<LocalStorage>().setMid(v),
+          updateState: (v) => setState(() => _mid = v),
+          buildPayload: (current, v) => SettingsModel(
+            tipEnabled: current?.tipEnabled ?? sl<LocalStorage>().tipsEnabled,
+            cashPaymentEnabled:
+                current?.cashPaymentEnabled ?? sl<LocalStorage>().cashEnabled,
+            merchantId: v,
+          ),
+        ),
       );
+
+  Future<void> _saveDeviceSetting({
+    required String value,
+    required Future<void> Function(String value) saveLocal,
+    required void Function(String value) updateState,
+    required SettingsModel Function(SettingsModel? current, String value)
+        buildPayload,
+  }) async {
+    final settings = await MyApiClient.getSettings();
+    await MyApiClient.saveSettings(
+      buildPayload(settings.settings, value),
+    );
+    await saveLocal(value);
+    updateState(value);
+  }
 
   Future<void> _editStoredValue({
     required String currentValue,
@@ -77,7 +109,31 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
 
     if (saved == null || !mounted) return;
 
-    await onSaved(saved);
+    try {
+      await onSaved(saved);
+    } on DioException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message?.trim().isNotEmpty == true
+                ? e.message!.trim()
+                : 'Failed to save',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to save'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

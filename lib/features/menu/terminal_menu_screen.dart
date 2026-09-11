@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/database/local_storage.dart';
 import '../../core/di/injection.dart';
+import '../../core/services/payment_service.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import '../../screens/device_settings_screen.dart';
@@ -12,8 +13,57 @@ import 'settings_screen.dart';
 import 'transactions_list_screen.dart';
 
 /// Terminal-style menu shown from the Checkout screen.
-class TerminalMenuScreen extends StatelessWidget {
+class TerminalMenuScreen extends StatefulWidget {
   const TerminalMenuScreen({super.key});
+
+  @override
+  State<TerminalMenuScreen> createState() => _TerminalMenuScreenState();
+}
+
+class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
+  final _paymentService = PaymentService();
+  bool _isSettling = false;
+
+  Future<void> _startSettlement() async {
+    if (_isSettling) return;
+
+    setState(() => _isSettling = true);
+    try {
+      final result = await _paymentService.startSettlement();
+      if (!mounted) return;
+
+      final status = (result['status'] ?? '').toString().toLowerCase();
+      final success = status == 'success' ||
+          status == 'approved' ||
+          status == 'ok' ||
+          status == 'completed' ||
+          status == 'true';
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Settlement completed' : 'Settlement failed'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } on PaymentServiceException catch (e) {
+      if (!mounted) return;
+      final cancelled = e.code == 'PAYMENT_CANCELLED';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            cancelled
+                ? 'Settlement cancelled'
+                : (e.message.isNotEmpty
+                    ? e.message
+                    : 'Settlement failed'),
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSettling = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +105,15 @@ class TerminalMenuScreen extends StatelessWidget {
                 ),
               );
             },
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp10),
+          _MenuTile(
+            title: 'Settlement',
+            subtitle: _isSettling
+                ? 'Running settlement…'
+                : 'Run end-of-day settlement on terminal.',
+            icon: Icons.account_balance_wallet_outlined,
+            onTap: _isSettling ? () {} : _startSettlement,
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _MenuTile(

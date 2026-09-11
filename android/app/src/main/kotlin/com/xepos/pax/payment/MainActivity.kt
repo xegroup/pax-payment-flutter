@@ -116,6 +116,24 @@ class MainActivity : FlutterFragmentActivity() {
                             slipNumber = slipNumber,
                         )
                     }
+                    "startSettlement" -> {
+                        if (pendingResult != null) {
+                            result.error(
+                                "PAYMENT_IN_PROGRESS",
+                                "Another payment is already in progress.",
+                                null,
+                            )
+                            return@setMethodCallHandler
+                        }
+
+                        pendingResult = result
+                        pendingOperation = "settlement"
+                        pendingAmountCents = 0
+                        pendingOriginalTransactionId = ""
+                        val refId = call.argument<String>("referenceId")
+                        val reqReportFile = call.argument<Int>("reqReportFile") ?: 0
+                        startEvoSettlement(refId, reqReportFile)
+                    }
 
                     else -> result.notImplemented()
                 }
@@ -198,6 +216,36 @@ class MainActivity : FlutterFragmentActivity() {
             putExtra("cashbackAmount", cashbackAmount)
             putExtra("referenceId", refId)
             putExtra("slipNumber", slipNumber)
+        }
+
+        try {
+            evoActivityLauncher.launch(intent)
+        } catch (e: ActivityNotFoundException) {
+            pendingResult?.error(
+                "EVO_APP_MISSING",
+                "EVO Payments app is not installed.",
+                null,
+            )
+            pendingResult = null
+        } catch (e: Exception) {
+            pendingResult?.error(
+                "EVO_LAUNCH_ERROR",
+                e.message ?: "Failed to launch EVO Payments app.",
+                null,
+            )
+            pendingResult = null
+        }
+    }
+    private fun startEvoSettlement(
+        refId: String?,
+        reqReportFile: Int?
+    ) {
+        val intent = Intent().apply {
+            setClassName(evoPackageName, evoClassName)
+            action = evoActionPerformTransaction
+            putExtra("type", "31")
+            putExtra("referenceId", refId)
+            putExtra("reqReportFile", reqReportFile)
         }
 
         try {
