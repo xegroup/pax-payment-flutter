@@ -6,6 +6,8 @@ import '../../core/network/MyApiClient.dart';
 import '../../core/security/manager_pin_gate.dart';
 import '../../core/services/payment_service.dart';
 import '../../shared/responsive/responsive.dart';
+import '../../shared/theme/pax_font_sizes.dart';
+import '../../shared/theme/pax_text_styles.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import 'data/dummy_payments_data.dart';
@@ -388,6 +390,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
       final result = await _paymentService.startRefund(
         amount: amountCents,
         originalTransactionId: originalId,
+        slipNumber: tx.refundSlipNumber,
         title: 'Refund $originalId',
       );
       final statusValue = (result['status'] ?? '').toString().toLowerCase();
@@ -561,6 +564,7 @@ class _PaymentGridTile extends StatelessWidget {
       color: PaxPaymentColors.white,
       borderRadius: radius,
       child: Container(
+        padding: const EdgeInsets.all(PaxPaymentSpacing.sp12),
         decoration: BoxDecoration(
           borderRadius: radius,
           border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
@@ -570,79 +574,134 @@ class _PaymentGridTile extends StatelessWidget {
           children: [
             InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.vertical(top: radius.topLeft),
-              child: Padding(
-                padding: const EdgeInsets.all(PaxPaymentSpacing.sp12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            money.format(tx.amount),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: PaxPaymentColors.darkGrayText,
-                                ),
-                          ),
+              borderRadius: radius,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          money.format(tx.amount),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: PaxPaymentColors.darkGrayText,
+                              ),
                         ),
-                        PaymentStatusBadge(
-                          status: tx.status,
-                          compact: true,
-                          isRefund: tx.isRefund,
-                          isRefunded: tx.isRefunded,
+                      ),
+                      PaymentStatusBadge(
+                        status: tx.status,
+                        compact: true,
+                        isRefund: tx.isRefund,
+                        isRefunded: tx.isRefunded,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: PaxPaymentSpacing.sp10),
+                  Text(
+                    tx.customerName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: PaxPaymentColors.darkGrayText,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: PaxPaymentSpacing.sp10),
-                    Text(
-                      tx.customerName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: PaxPaymentColors.darkGrayText,
-                          ),
-                    ),
-                    const SizedBox(height: PaxPaymentSpacing.sp4),
-                    Text(
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: PaxPaymentSpacing.sp4),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: radius,
+                    child: Text(
                       formattedTime,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: PaxPaymentColors.mediumGray,
                           ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            if (canRefund)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  PaxPaymentSpacing.sp12,
-                  0,
-                  PaxPaymentSpacing.sp12,
-                  PaxPaymentSpacing.sp12,
-                ),
-                child: Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: isRefunding ? null : onRefund,
-                    style: TextButton.styleFrom(
-                      foregroundColor: PaxPaymentColors.primaryBlue,
-                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    child: Text(isRefunding ? 'Processing…' : 'Refund'),
                   ),
                 ),
-              ),
+                if (canRefund)
+                  _RefundBadge(
+                    isRefunding: isRefunding,
+                    onPressed: onRefund,
+                  ),
+              ],
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RefundBadge extends StatelessWidget {
+  const _RefundBadge({
+    required this.isRefunding,
+    required this.onPressed,
+  });
+
+  final bool isRefunding;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark
+        ? PaxPaymentColors.groupAmber.withValues(alpha: 0.15)
+        : PaxColors.warningLight;
+    final textColor =
+        isDark ? PaxPaymentColors.groupAmber : PaxColors.warningDark;
+    final borderColor = isDark
+        ? PaxPaymentColors.groupAmber.withValues(alpha: 0.3)
+        : PaxColors.warning.withValues(alpha: 0.4);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isRefunding ? null : onPressed,
+        borderRadius: PaxSpacing.brPill,
+        child: AnimatedContainer(
+          duration: PaxSpacing.durationFast,
+          padding: EdgeInsets.symmetric(
+            horizontal: PaxSpacing.sm - 2,
+            vertical: PaxSpacing.xxs,
+          ),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: PaxSpacing.brPill,
+            border: Border.all(color: borderColor, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.replay_rounded,
+                size: 10,
+                color: textColor,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                isRefunding ? 'Processing…' : 'Refund',
+                style: PaxTextStyles.overline.copyWith(
+                  fontSize: PaxFontSizesBadge.sm,
+                  color: textColor,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

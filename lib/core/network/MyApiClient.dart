@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 
 import '../../features/auth/data/login_response.dart';
+import '../../features/auth/data/save_settings_response.dart';
+import '../../features/auth/data/settings_model.dart';
 import '../../features/auth/data/logout_response.dart';
 import '../../features/transaction/data/session_response.dart';
 import '../../features/transaction/data/transaction_request.dart';
@@ -219,5 +221,42 @@ class MyApiClient {
     }
 
     return session;
+  }
+
+  static Future<SaveSettingsResponse> saveSettings(
+    SettingsModel body,
+  ) async {
+    await loadPersistedAuthToken();
+    return instance.saveSettings(body);
+  }
+
+  static Future<SaveSettingsResponse> getSettings() async {
+    await loadPersistedAuthToken();
+    if (_dio == null) {
+      throw Exception('ApiService not initialized! Call init(baseUrl) first.');
+    }
+
+    final response = await _dio!.get<dynamic>('api/app/settings');
+
+    final code = response.statusCode ?? 0;
+    if (code == 401 || code == 403) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        type: DioExceptionType.badResponse,
+        message: 'Session expired',
+      );
+    }
+
+    final parsed = SaveSettingsResponse.tryParse(response.data);
+    if (parsed == null) {
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        type: DioExceptionType.badResponse,
+        message: 'Invalid getSettings response: ${response.data}',
+      );
+    }
+    return parsed;
   }
 }

@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:pax_payment/features/auth/data/logout_response.dart';
+import 'package:pax_payment/features/auth/data/save_settings_response.dart';
+import 'package:pax_payment/features/auth/data/settings_model.dart';
 import 'package:pax_payment/features/transaction/data/transaction_request.dart';
 import 'package:pax_payment/features/transaction/data/transaction_response.dart';
 import 'package:pax_payment/features/transaction/data/transactions_list_response.dart';
@@ -44,4 +46,12 @@ abstract class ApiService {
 
   @GET("api/app/auth/check")
   Future<SessionResponse> checkSession();
+
+  @POST("api/app/save-settings")
+  Future<SaveSettingsResponse> saveSettings(
+      @Body() SettingsModel body
+      );
+
+  @GET("api/app/settings")
+  Future<SaveSettingsResponse> getSettings();
 }

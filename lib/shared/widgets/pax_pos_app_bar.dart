@@ -4,7 +4,7 @@ import '../responsive/responsive.dart';
 import '../theme/pax_colors.dart';
 import '../theme/pax_text_styles.dart';
 
-/// Branded app icon for Pax Payment checkout / splash.
+/// Branded app icon for splash / launcher mark.
 class PaxPaymentAppIcon extends StatelessWidget {
   const PaxPaymentAppIcon({super.key, this.size});
 
@@ -24,6 +24,43 @@ class PaxPaymentAppIcon extends StatelessWidget {
         width: side,
         height: side,
         fit: BoxFit.cover,
+      ),
+    );
+  }
+}
+
+/// Horizontal brand logo for checkout and headers.
+class PaxPaymentLogo extends StatelessWidget {
+  const PaxPaymentLogo({super.key, this.height});
+
+  /// Defaults to 36 on phone, 40 on tablet.
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Responsive.of(context);
+    final double logoHeight = height ?? r.value(mobile: 36.0, tablet: 40.0);
+    final radius = logoHeight * 0.22;
+    final imageHeight = logoHeight * 0.62;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        top: r.value(mobile: 4.0, tablet: 6.0),
+      ),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: r.value(mobile: 12.0, tablet: 14.0),
+          vertical: r.value(mobile: 8.0, tablet: 10.0),
+        ),
+        decoration: BoxDecoration(
+          color: PaxColors.teal500,
+          borderRadius: BorderRadius.circular(radius),
+        ),
+        child: Image.asset(
+          'assets/images/logo.png',
+          height: imageHeight,
+          fit: BoxFit.contain,
+        ),
       ),
     );
   }
@@ -115,6 +152,7 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.leadingLabel = 'Go back',
     this.title = 'POS',
     this.showTitle = true,
+    this.centerLogo = false,
     this.trailing = const [],
     this.compactWidth = 380,
   });
@@ -126,6 +164,7 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String leadingLabel;
   final String title;
   final bool showTitle;
+  final bool centerLogo;
   final List<Widget> trailing;
   final double compactWidth;
 
@@ -139,6 +178,7 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
     final showBackLabel = !compact && onGoBack != null;
     final showMenuLabel = !compact && onMenu != null;
     final hPad = r.value(mobile: 8.0, tablet: 16.0);
+    final logoWidget = _buildLogo(r);
 
     return Material(
       color: PaxColors.white,
@@ -149,68 +189,97 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
           height: kToolbarHeight,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: hPad),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: compact ? 44 : 108,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: leading ??
-                        (onGoBack != null
-                            ? _BackControl(
-                                onPressed: onGoBack!,
-                                label: leadingLabel,
-                                showLabel: showBackLabel,
-                              )
-                            : const SizedBox.shrink()),
-                  ),
-                ),
-                Expanded(
-                  child: Center(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+            child: centerLogo
+                ? Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          logo ?? const PaxPaymentLogoMark(),
-                          if (showTitle) ...[
-                            SizedBox(width: r.value(mobile: 8.0, tablet: 10.0)),
-                            Text(
-                              title,
-                              style: PaxTextStyles.bodySemiBold.copyWith(
-                                color: PaxColors.grey800,
-                                fontSize: r.value(mobile: 16.0, tablet: 17.0),
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
+                          _buildLeading(compact, showBackLabel),
+                          const Spacer(),
+                          _buildTrailing(compact, showMenuLabel),
                         ],
                       ),
-                    ),
-                  ),
-                ),
-                SizedBox(
-                  width: compact ? 88 : 132,
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ...trailing,
-                        if (onMenu != null)
-                          _MenuControl(
-                            onPressed: onMenu!,
-                            showLabel: showMenuLabel,
+                      IgnorePointer(
+                        child: Center(child: logoWidget),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      _buildLeading(compact, showBackLabel),
+                      Expanded(
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: logoWidget,
                           ),
-                      ],
-                    ),
+                        ),
+                      ),
+                      _buildTrailing(compact, showMenuLabel),
+                    ],
                   ),
-                ),
-              ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogo(Responsive r) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        logo ?? const PaxPaymentLogoMark(),
+        if (showTitle) ...[
+          SizedBox(width: r.value(mobile: 8.0, tablet: 10.0)),
+          Text(
+            title,
+            style: PaxTextStyles.bodySemiBold.copyWith(
+              color: PaxColors.grey800,
+              fontSize: r.value(mobile: 16.0, tablet: 17.0),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
             ),
           ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLeading(bool compact, bool showBackLabel) {
+    return SizedBox(
+      width: compact ? 44 : 108,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: leading ??
+            (onGoBack != null
+                ? _BackControl(
+                    onPressed: onGoBack!,
+                    label: leadingLabel,
+                    showLabel: showBackLabel,
+                  )
+                : const SizedBox.shrink()),
+      ),
+    );
+  }
+
+  Widget _buildTrailing(bool compact, bool showMenuLabel) {
+    return SizedBox(
+      width: compact ? 88 : 132,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            ...trailing,
+            if (onMenu != null)
+              _MenuControl(
+                onPressed: onMenu!,
+                showLabel: showMenuLabel,
+              ),
+          ],
         ),
       ),
     );

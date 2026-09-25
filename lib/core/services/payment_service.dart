@@ -144,6 +144,7 @@ class PaymentService {
     required int amount,
     required String originalTransactionId,
     String title = '',
+    int slipNumber = 0,
   }) async {
     if (amount <= 0) {
       throw const PaymentServiceException(
@@ -162,6 +163,7 @@ class PaymentService {
       'amount': amount,
       'title': title,
       'originalTransactionId': originalTransactionId,
+      'slipNumber': slipNumber,
     };
 
     try {
@@ -191,6 +193,15 @@ class PaymentService {
 
       return result;
     } on PlatformException catch (e) {
+      if (e.code == 'PAYMENT_FAILED' && e.details is Map) {
+        final details = Map<String, dynamic>.from(e.details as Map);
+        await saveEvoPaymentResult(
+          details,
+          amountCents: amount,
+          isRefund: true,
+          originalTransactionId: originalTransactionId,
+        );
+      }
       if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {
         throw PaymentServiceException(
           e.message ?? 'Refunds are not available on this device.',
@@ -220,6 +231,72 @@ class PaymentService {
     } catch (e) {
       throw PaymentServiceException(
         'Unexpected error while starting refund.',
+        code: 'unknown_error',
+        cause: e,
+      );
+    }
+  }
+  /// Starts native EVO settlement (end-of-day batch close).
+  Future<Map<String, dynamic>> startSettlement({
+    String? referenceId,
+    int reqReportFile = 0,
+  }) async {
+    final payload = <String, dynamic>{
+      'reqReportFile': reqReportFile,
+    };
+    final ref = referenceId?.trim();
+    if (ref != null && ref.isNotEmpty) {
+      payload['referenceId'] = ref;
+    }
+
+    try {
+      final rawResult = await _channel
+          .invokeMethod<dynamic>('startSettlement', payload)
+          .timeout(const Duration(minutes: 2));
+
+      if (rawResult == null) {
+        throw const PaymentServiceException(
+          'Native settlement returned no result.',
+          code: 'empty_result',
+        );
+      }
+      if (rawResult is! Map) {
+        throw PaymentServiceException(
+          'Unexpected native settlement result type: ${rawResult.runtimeType}.',
+          code: 'invalid_result_type',
+        );
+      }
+      return rawResult.map((key, value) => MapEntry(key.toString(), value));
+    } on PlatformException catch (e) {
+      if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {
+        throw PaymentServiceException(
+          e.message ?? 'Settlement is not available on this device.',
+          code: 'ios_payment_not_supported',
+          cause: e,
+        );
+      }
+      throw PaymentServiceException(
+        e.message ?? 'Native settlement call failed.',
+        code: e.code,
+        cause: e,
+      );
+    } on MissingPluginException catch (e) {
+      throw PaymentServiceException(
+        Platform.isIOS
+            ? 'Settlement is not available on iOS yet.'
+            : 'Settlement channel is not implemented on this platform.',
+        code: 'missing_plugin',
+        cause: e,
+      );
+    } on TimeoutException catch (e) {
+      throw PaymentServiceException(
+        'Settlement request timed out.',
+        code: 'timeout',
+        cause: e,
+      );
+    } catch (e) {
+      throw PaymentServiceException(
+        'Unexpected error while starting settlement.',
         code: 'unknown_error',
         cause: e,
       );

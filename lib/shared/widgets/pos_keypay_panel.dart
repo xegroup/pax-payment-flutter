@@ -14,6 +14,7 @@ class PosKeypayPanel extends StatelessWidget {
     this.onOperatorTap,
     this.footer,
     this.showOperatorColumn = true,
+    this.bottomLeftClear = false,
   });
 
   final ValueChanged<String> onDigit;
@@ -22,6 +23,8 @@ class PosKeypayPanel extends StatelessWidget {
   final ValueChanged<String>? onOperatorTap;
   final Widget? footer;
   final bool showOperatorColumn;
+  /// When true, bottom-left key clears the entry instead of entering "00".
+  final bool bottomLeftClear;
 
   @override
   Widget build(BuildContext context) {
@@ -152,10 +155,19 @@ class PosKeypayPanel extends StatelessWidget {
                                   child: Row(
                                     children: [
                                       Expanded(
-                                        child: _NumKey(
-                                          label: '00',
-                                          onTap: () => onDigit('00'),
-                                        ),
+                                        child: bottomLeftClear
+                                            ? _NumKey(
+                                                label: 'Clear',
+                                                isAction: true,
+                                                onTap: () {
+                                                  HapticFeedback.mediumImpact();
+                                                  onClear();
+                                                },
+                                              )
+                                            : _NumKey(
+                                                label: '00',
+                                                onTap: () => onDigit('00'),
+                                              ),
                                       ),
                                       const SizedBox(
                                         width: PaxPaymentSpacing.sp8,
