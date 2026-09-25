@@ -111,7 +111,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
     return Scaffold(
       backgroundColor: PaxPaymentColors.adminBackground,
       appBar: AppBar(
-        title: const Text('Reports & analytics'),
+        title: const Text('Reports & Analytics'),
         backgroundColor: PaxPaymentColors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
@@ -156,6 +156,8 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
   Widget _buildContent(BuildContext context, Responsive r, double pad) {
     final (start, end) = _range;
     final rangeTransactions = _transactionsInRange(_transactions, start, end);
+    const salesListMaxItems = 3;
+    final salesListItems = rangeTransactions.take(salesListMaxItems).toList();
     final s = _salesSummary(rangeTransactions);
     final daily = _dailyBars(rangeTransactions, start, end);
     final cumulative = _cumulativeSeries(daily);
@@ -270,7 +272,9 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
           Text(
             rangeTransactions.isEmpty
                 ? 'No sales in this range'
-                : '${rangeTransactions.length} transaction${rangeTransactions.length == 1 ? '' : 's'}',
+                : rangeTransactions.length <= salesListMaxItems
+                    ? '${rangeTransactions.length} transaction${rangeTransactions.length == 1 ? '' : 's'}'
+                    : 'Latest $salesListMaxItems of ${rangeTransactions.length} transactions',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: PaxPaymentColors.mediumGray,
                 ),
@@ -297,7 +301,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
             )
           else
             ...[
-              for (final tx in rangeTransactions) ...[
+              for (final tx in salesListItems) ...[
                 _ReportTransactionTile(
                   tx: tx,
                   money: _money,

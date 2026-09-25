@@ -326,8 +326,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
             canRefund: _canRefund(tx),
             isRefunding: _refundingId == tx.id,
             onTap: () => _openTransactionDetail(context, tx),
-            // onRefund: () => _confirmRefund(context, tx),
-            onRefund: () => _runRefund(tx),
+            onRefund: () => _confirmRefund(context, tx),
           );
         },
       ),

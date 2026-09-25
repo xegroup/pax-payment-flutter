@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../core/di/injection.dart';
+import '../core/database/local_storage.dart';
 import '../core/network/MyApiClient.dart';
 import '../features/auth/data/login_response.dart';
 import '../features/auth/data/signup_request.dart';
@@ -49,6 +51,15 @@ class _FirstTimeSetupScreenState extends State<FirstTimeSetupScreen> {
   Future<void> _handleSignupResponse(LoginResponse response) async {
     if (response.isSuccess) {
       await MyApiClient.persistAuthToken(response.token.trim());
+      final storage = sl<LocalStorage>();
+      final username = _usernameCtrl.text.trim();
+      final password = _passwordCtrl.text.trim();
+      if (username.isNotEmpty) {
+        await storage.setLoginUsername(username);
+      }
+      if (password.isNotEmpty) {
+        await storage.setLoginPassword(password);
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(CheckoutPaymentScreen.materialRoute());
       return;

@@ -6,8 +6,6 @@ import 'package:intl/intl.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
-import '../../core/network/MyApiClient.dart';
-import '../../features/auth/login_screen.dart';
 import '../../screens/payment_flow_helpers.dart';
 import '../../shared/responsive/responsive.dart';
 import '../../shared/theme/paxpayment_colors.dart';
@@ -143,11 +141,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   PreferredSizeWidget _buildCheckoutAppBar(BuildContext context) {
     final r = Responsive.of(context);
     return PaxPosAppBar(
-      leading: IconButton(
-        icon: const Icon(Icons.logout_rounded),
-        tooltip: 'Log out',
-        onPressed: _isProcessing ? null : () => _logout(context),
-      ),
       logo: PaxPaymentLogo(
         height: r.value(mobile: 36.0, tablet: 40.0),
       ),
@@ -160,40 +153,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
           ),
         );
       },
-    );
-  }
-
-  Future<void> _logout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Log out'),
-        content: const Text('Return to the login screen?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-
-    setState(() => _isProcessing = true);
-    try {
-      await MyApiClient.logout();
-    } finally {
-      if (mounted) setState(() => _isProcessing = false);
-    }
-
-    if (!context.mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      (route) => false,
     );
   }
 
@@ -226,7 +185,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
       color: PaxPaymentColors.darkGrayText,
       fontWeight: FontWeight.w600,
     );
-    final cursorH = (amountStyle?.fontSize ?? 40) * 1.05;
+    final canPay = _keypayAmount > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -240,8 +199,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               children: [
                 Text('£', style: amountStyle),
                 Text(_keypayDisplayPounds, style: amountStyle),
-                const SizedBox(width: 3),
-                _KeypayCursor(height: cursorH),
               ],
             ),
           ),
@@ -261,17 +218,22 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
               onDelete: _onAmountDelete,
               onClear: _onAmountClear,
               footer: Material(
-                color: PaxPaymentColors.posKeypayAccent,
+                color: canPay
+                    ? PaxPaymentColors.posKeypayAccent
+                    : PaxPaymentColors.posKeypayAccent.withValues(alpha: 0.4),
                 child: InkWell(
-                  onTap: _onChargePressed,
+                  onTap: canPay ? _onChargePressed : null,
                   child: SizedBox(
                     height: 52,
                     child: Center(
                       child: Text(
-                        'Charge',
+                        'Pay',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: PaxPaymentColors.onPosKeypayAccent,
+                              color: canPay
+                                  ? PaxPaymentColors.onPosKeypayAccent
+                                  : PaxPaymentColors.onPosKeypayAccent
+                                      .withValues(alpha: 0.65),
                               fontWeight: FontWeight.w700,
                             ),
                       ),
@@ -938,7 +900,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     final paymentMethod = _method == CheckoutPaymentMethod.cash
         ? 'cash'
         : 'card';
-
     setState(() => _isProcessing = true);
     PaymentTransaction? tx;
     var shouldAdvance = false;
@@ -1204,53 +1165,6 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
       _SplitMode.equal => 'Equal split',
       _SplitMode.custom => 'Custom split',
     };
-  }
-}
-
-class _KeypayCursor extends StatefulWidget {
-  const _KeypayCursor({required this.height});
-
-  final double height;
-
-  @override
-  State<_KeypayCursor> createState() => _KeypayCursorState();
-}
-
-class _KeypayCursorState extends State<_KeypayCursor>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 530),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Opacity(opacity: _controller.value > 0.45 ? 1 : 0, child: child);
-      },
-      child: Container(
-        width: 2.5,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: PaxPaymentColors.posKeypayAccent,
-          borderRadius: BorderRadius.circular(1),
-        ),
-      ),
-    );
   }
 }
 

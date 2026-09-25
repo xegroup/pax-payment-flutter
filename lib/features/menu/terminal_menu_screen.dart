@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../core/database/local_storage.dart';
 import '../../core/di/injection.dart';
+import '../../core/auth/logout_confirmation.dart';
+import '../../core/security/manager_pin_gate.dart';
+import '../../core/network/MyApiClient.dart';
 import '../../core/services/payment_service.dart';
+import '../../features/auth/login_screen.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import '../../screens/device_settings_screen.dart';
@@ -23,9 +27,16 @@ class TerminalMenuScreen extends StatefulWidget {
 class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
   final _paymentService = PaymentService();
   bool _isSettling = false;
+  bool _isLoggingOut = false;
 
   Future<void> _startSettlement() async {
     if (_isSettling) return;
+
+    final pinOk = await verifyManagerPin(
+      context,
+      reason: 'Manager PIN is required to run settlement.',
+    );
+    if (!pinOk || !mounted) return;
 
     setState(() => _isSettling = true);
     try {
@@ -63,6 +74,26 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
     } finally {
       if (mounted) setState(() => _isSettling = false);
     }
+  }
+
+  Future<void> _logout() async {
+    if (_isLoggingOut || _isSettling) return;
+
+    final confirmed = await confirmLogoutWithPassword(context);
+    if (!confirmed || !mounted) return;
+
+    setState(() => _isLoggingOut = true);
+    try {
+      await MyApiClient.logout();
+    } finally {
+      if (mounted) setState(() => _isLoggingOut = false);
+    }
+
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
   }
 
   @override
@@ -185,6 +216,25 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
             },
           ),
           const SizedBox(height: PaxPaymentSpacing.sp24),
+          OutlinedButton.icon(
+            onPressed: (_isLoggingOut || _isSettling) ? null : _logout,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: PaxPaymentColors.errorRed,
+              minimumSize: const Size.fromHeight(48),
+              side: BorderSide(
+                color: PaxPaymentColors.errorRed.withValues(alpha: 0.5),
+              ),
+            ),
+            icon: _isLoggingOut
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.logout_rounded),
+            label: Text(_isLoggingOut ? 'Logging out…' : 'Log out'),
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp16),
           Center(
             child: Text(
               'POSLink Testing - XePOS',

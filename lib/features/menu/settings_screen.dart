@@ -72,103 +72,71 @@ class SettingsScreen extends StatelessWidget {
   }
 
   static Future<void> _changeManagerPin(BuildContext context) async {
-    final currentCtrl = TextEditingController();
-    final nextCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Change manager PIN'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: currentCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Current PIN'),
-            ),
-            TextField(
-              controller: nextCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'New PIN (4 digits)'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () async {
-              final currentPin = currentCtrl.text.trim();
-              final newPin = nextCtrl.text.trim();
-              if (newPin.length < 4) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(
-                      content: Text('PIN must be at least 4 digits'),
-                    ),
-                  );
-                }
-                return;
-              }
-
-              try {
-                final settings = await MyApiClient.getSettings();
-                final storedPin = settings.settings?.managerPin?.trim() ?? '';
-                if (storedPin.isEmpty || storedPin != currentPin) {
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('Current PIN incorrect')),
-                    );
-                  }
-                  return;
-                }
-
-                await MyApiClient.saveSettings(
-                  SettingsModel(
-                    tipEnabled: settings.settings?.tipEnabled ?? false,
-                    cashPaymentEnabled:
-                        settings.settings?.cashPaymentEnabled ?? false,
-                    managerPin: newPin,
-                  ),
-                );
-                await sl<LocalStorage>().setManagerPin(newPin);
-                if (!ctx.mounted) return;
-                Navigator.pop(ctx, true);
-              } on DioException catch (e) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        e.message?.trim().isNotEmpty == true
-                            ? e.message!.trim()
-                            : 'Failed to save manager PIN',
-                      ),
-                    ),
-                  );
-                }
-              } catch (_) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(
-                      content: Text('Failed to save manager PIN'),
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+    final currentPin = await promptManagerPinKeypad(
+      context,
+      title: 'Change manager PIN',
+      reason: 'Enter your current manager PIN.',
+      confirmLabel: 'Continue',
     );
-    if (ok == true && context.mounted) {
+    if (currentPin == null || !context.mounted) return;
+
+    try {
+      final settings = await MyApiClient.getSettings();
+      final storedPin = settings.settings?.managerPin?.trim() ?? '';
+      if (storedPin.isEmpty || storedPin != currentPin) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Current PIN incorrect')),
+          );
+        }
+        return;
+      }
+
+      final newPin = await promptManagerPinKeypad(
+        context,
+        title: 'New manager PIN',
+        reason: 'Enter a new PIN (4–6 digits).',
+        confirmLabel: 'Save',
+      );
+      if (newPin == null || !context.mounted) return;
+
+      if (newPin.length < managerPinMinLength ||
+          newPin.length > managerPinMaxLength) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PIN must be 4–6 digits')),
+        );
+        return;
+      }
+
+      await MyApiClient.saveSettings(
+        SettingsModel(
+          tipEnabled: settings.settings?.tipEnabled ?? false,
+          cashPaymentEnabled: settings.settings?.cashPaymentEnabled ?? false,
+          managerPin: newPin,
+        ),
+      );
+      await sl<LocalStorage>().setManagerPin(newPin);
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Manager PIN updated')),
       );
+    } on DioException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message?.trim().isNotEmpty == true
+                ? e.message!.trim()
+                : 'Failed to save manager PIN',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to save manager PIN')),
+      );
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      currentCtrl.dispose();
-      nextCtrl.dispose();
-    });
   }
 
   static Future<void> _resetTransactions(BuildContext context) async {

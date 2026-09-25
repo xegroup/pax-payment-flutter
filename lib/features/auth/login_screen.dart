@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/di/injection.dart';
+import '../../core/database/local_storage.dart';
 import '../../core/network/MyApiClient.dart';
 import '../../features/auth/data/login_request.dart';
 import '../../features/auth/data/login_response.dart';
@@ -59,6 +61,15 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLoginResponse(LoginResponse response) async {
     if (response.isSuccess) {
       await MyApiClient.persistAuthToken(response.token.trim());
+      final storage = sl<LocalStorage>();
+      final loginId = _emailOrPhoneController.text.trim();
+      final password = _passwordController.text.trim();
+      if (loginId.isNotEmpty) {
+        await storage.setLoginUsername(loginId);
+      }
+      if (password.isNotEmpty) {
+        await storage.setLoginPassword(password);
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(CheckoutPaymentScreen.materialRoute());
       return;
