@@ -4,8 +4,8 @@ class PaxPaymentStrings {
   PaxPaymentStrings._();
 
   // ============ APP GENERAL ============
-  static const String appName = 'Pax Payment';
-  static const String paxPayment = 'PAX PAYMENT';
+  static const String appName = 'Xe Pay';
+  static const String paxPayment = 'XE PAY';
   static const String loading = 'Loading...';
   static const String pleaseWait = 'Please wait...';
   static const String error = 'Error';
@@ -39,7 +39,7 @@ class PaxPaymentStrings {
   static const String signUp = 'Sign Up';
   static const String createAccount = 'Create Account';
   static const String alreadyHaveAccount = 'Already a User? ';
-  static const String dontHaveAccount = 'New to Pax Payment? ';
+  static const String dontHaveAccount = 'New to Xe Pay? ';
   static const String forgotPassword = 'Forgot Password?';
   static const String email = 'Email';
   static const String password = 'Password';
