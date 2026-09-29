@@ -8,14 +8,25 @@ plugins {
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
+
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
+fun releaseKeystoreFile(): java.io.File? {
+    if (!keystorePropertiesFile.exists()) return null
+
+    val storeFilePath = keystoreProperties.getProperty("storeFile") ?: return null
+    val storeFile = rootProject.file(storeFilePath)
+    return storeFile.takeIf { it.exists() }
+}
+
+val releaseKeystore = releaseKeystoreFile()
+val hasReleaseSigning = releaseKeystore != null
+
 android {
     namespace = "com.xepos.pax.payment"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 36
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -28,14 +39,13 @@ android {
 
     signingConfigs {
         create("release") {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-            }
+            keyAlias = "xewaiter"
+            keyPassword = "xewaiter"
+            storePassword = "xewaiter"
+            storeFile = file("D:/progress/XEWaiter.keystore")
         }
     }
+
 
     buildFeatures {
         buildConfig = true
@@ -43,19 +53,17 @@ android {
 
     defaultConfig {
         applicationId = "com.xepos.pax.payment"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        minSdk = 26
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+
+
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
-            }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

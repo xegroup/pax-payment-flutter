@@ -11,6 +11,7 @@ import 'core/config/app_flags.dart';
 import 'core/di/injection.dart';
 import 'features/auth/splash_screen.dart';
 import 'features/menu/data/dummy_payments_data.dart';
+import 'shared/resources/paxpayment_strings.dart';
 import 'shared/theme/theme_service.dart';
 import 'shared/utils/localization_service.dart';
 
@@ -55,6 +56,7 @@ class PaxPaymentApp extends StatelessWidget {
       builder: (context, _) {
         return SessionLifecycleWatcher(
           child: MaterialApp(
+            title: PaxPaymentStrings.appName,
             debugShowCheckedModeBanner: false,
             navigatorKey: AuthSession.navigatorKey,
             navigatorObservers: [appRouteObserver],
