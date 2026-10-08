@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../features/auth/data/login_response.dart';
+import '../../features/auth/data/password_reset_request.dart';
 import '../../features/auth/data/save_settings_response.dart';
 import '../../features/auth/data/settings_model.dart';
 import '../../features/auth/data/logout_response.dart';
@@ -107,6 +108,14 @@ class MyApiClient {
 
   static Future<LoginResponse> signup(Map<String, dynamic> body) {
     return instance.signup(body);
+  }
+
+  static Future<LoginResponse> forgotPassword(String email) {
+    return instance.forgotPassword(email);
+  }
+
+  static Future<LoginResponse> resetPassword(PasswordResetRequest body) {
+    return instance.resetPassword(body);
   }
 
   static Future<void> logout() async {
