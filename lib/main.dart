@@ -70,6 +70,23 @@ class PaxPaymentApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            builder: (context, child) {
+              final mediaQuery = MediaQuery.of(context);
+              final keyboardBottom = mediaQuery.viewInsets.bottom;
+              // Android reports the IME inset short of the navigation bar,
+              // which clips the bottom of the UI while the keyboard is open.
+              if (keyboardBottom <= 0 || child == null) {
+                return child ?? const SizedBox.shrink();
+              }
+              return MediaQuery(
+                data: mediaQuery.copyWith(
+                  viewInsets: mediaQuery.viewInsets.copyWith(
+                    bottom: keyboardBottom + 22,
+                  ),
+                ),
+                child: child,
+              );
+            },
             home: const SplashScreen(),
           ),
         );

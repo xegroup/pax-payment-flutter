@@ -119,20 +119,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _onForgotPassword() {
     FocusScope.of(context).unfocus();
+    final initialEmail = _emailOrPhoneController.text.trim();
     showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Forgot password'),
-        content: Text(
-          'Contact support:\n${PaxPaymentStrings.supportPhoneUK}\n'
-          '${PaxPaymentStrings.supportPhoneUSA}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
+      builder: (ctx) => _ForgotPasswordDialog(
+        initialEmail: initialEmail.contains('@') ? initialEmail : '',
       ),
     );
   }
@@ -397,6 +388,162 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ForgotPasswordDialog extends StatefulWidget {
+  const _ForgotPasswordDialog({this.initialEmail = ''});
+
+  final String initialEmail;
+
+  @override
+  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+}
+
+class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _emailController;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  void _showMessage(String message, {required bool isError}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    if (!isError && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _onResetPassword() async {
+    FocusScope.of(context).unfocus();
+    if (_isSubmitting) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _isSubmitting = true);
+
+    final email = _emailController.text.trim();
+    try {
+      final response = await MyApiClient.forgotPassword(email);
+      if (!mounted) return;
+
+      if (response.errors.trim().isNotEmpty) {
+        _showMessage(response.failureMessage, isError: true);
+        return;
+      }
+
+      final successText = response.message.trim().isNotEmpty
+          ? response.message.trim()
+          : 'If an account exists for this email, reset instructions have been sent.';
+      _showMessage(successText, isError: false);
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final parsed = LoginResponse.tryParse(e.response?.data);
+      if (parsed != null && parsed.errors.trim().isNotEmpty) {
+        _showMessage(parsed.failureMessage, isError: true);
+        return;
+      }
+      _showMessage('Unable to reset password. Please try again.', isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Unable to reset password. Please try again.', isError: true);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final borderRadius = BorderRadius.circular(PaxPaymentSpacing.radiusLg);
+
+    return AlertDialog(
+      title: const Text('Forgot password'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Enter your email address and we will send reset instructions.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: PaxPaymentColors.hintText,
+                    height: 1.35,
+                  ),
+            ),
+            const SizedBox(height: PaxPaymentSpacing.sp16),
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.done,
+              autofillHints: const [AutofillHints.email],
+              enabled: !_isSubmitting,
+              onFieldSubmitted: (_) => _onResetPassword(),
+              decoration: InputDecoration(
+                labelText: PaxPaymentStrings.email,
+                hintText: PaxPaymentStrings.enterEmail,
+                filled: true,
+                fillColor: PaxPaymentColors.white,
+                border: OutlineInputBorder(borderRadius: borderRadius),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: borderRadius,
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: borderRadius,
+                  borderSide: const BorderSide(
+                    color: PaxPaymentColors.primaryBlue,
+                    width: 2,
+                  ),
+                ),
+                prefixIcon: const Icon(
+                  Icons.email_outlined,
+                  color: PaxPaymentColors.adminTitle,
+                ),
+              ),
+              validator: (value) {
+                final email = value?.trim() ?? '';
+                if (email.isEmpty) return 'Enter your email';
+                if (!email.contains('@') || !email.contains('.')) {
+                  return 'Enter a valid email address';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _isSubmitting ? null : _onResetPassword,
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Reset password'),
+        ),
+      ],
     );
   }
 }

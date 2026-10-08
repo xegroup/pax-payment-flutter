@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
 import '../../core/network/MyApiClient.dart';
+import '../../features/auth/data/login_response.dart';
+import '../../features/auth/data/password_reset_request.dart';
+import '../../shared/resources/paxpayment_strings.dart';
 import '../../features/auth/data/settings_model.dart';
 import '../../core/security/manager_pin_gate.dart';
 import '../../screens/payment_settings_screen.dart';
-import 'data/dummy_payments_data.dart';
 import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import 'checkout_payment_screen.dart';
@@ -44,10 +46,10 @@ class SettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _SectionCard(
-            title: 'Reset transactions',
-            subtitle: 'Clears saved payment records from this device.',
-            icon: Icons.delete_outline_rounded,
-            onTap: () => _resetTransactions(context),
+            title: 'Reset password',
+            subtitle: 'Choose a new password for your account.',
+            icon: Icons.lock_reset_rounded,
+            onTap: () => _resetPassword(context),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp16),
           FilledButton.tonalIcon(
@@ -139,43 +141,258 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  static Future<void> _resetTransactions(BuildContext context) async {
-    final ok = await showDialog<bool>(
+  static Future<void> _resetPassword(BuildContext context) async {
+    final storedLogin = sl<LocalStorage>().loginUsername.trim();
+    final initialEmail =
+        storedLogin.contains('@') ? storedLogin : '';
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Reset transactions'),
-        content: const Text(
-          'This will delete all saved payment records on this device. '
-          'Only do this if you want to remove demo or old test data.',
+      builder: (ctx) => _ResetPasswordDialog(initialEmail: initialEmail),
+    );
+  }
+}
+
+class _ResetPasswordDialog extends StatefulWidget {
+  const _ResetPasswordDialog({this.initialEmail = ''});
+
+  final String initialEmail;
+
+  @override
+  State<_ResetPasswordDialog> createState() => _ResetPasswordDialogState();
+}
+
+class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController.text = widget.initialEmail;
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  InputDecoration _fieldDecoration({
+    required String label,
+    required String hint,
+    Widget? suffixIcon,
+    IconData prefixIcon = Icons.lock_outline_rounded,
+  }) {
+    final borderRadius = BorderRadius.circular(PaxPaymentSpacing.radiusLg);
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: PaxPaymentColors.white,
+      border: OutlineInputBorder(borderRadius: borderRadius),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: const BorderSide(
+          color: PaxPaymentColors.primaryBlue,
+          width: 2,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Reset'),
-          ),
-        ],
       ),
+      prefixIcon: Icon(prefixIcon, color: PaxPaymentColors.adminTitle),
+      suffixIcon: suffixIcon,
+    );
+  }
+
+  Future<void> _onSubmit() async {
+    FocusScope.of(context).unfocus();
+    if (_isSubmitting) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    setState(() => _isSubmitting = true);
+
+    final request = PasswordResetRequest(
+      email: _emailController.text.trim(),
+      token: '',
+      password: _passwordController.text,
+      passwordConfirmation: _confirmPasswordController.text,
     );
 
-    if (ok != true || !context.mounted) return;
+    try {
+      final response = await MyApiClient.resetPassword(request);
+      if (!mounted) return;
 
-    final pinOk = await verifyManagerPin(
-      context,
-      reason: 'Manager PIN is required to reset transactions.',
-    );
-    if (!pinOk || !context.mounted) return;
+      if (response.errors.trim().isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(response.failureMessage)),
+        );
+        return;
+      }
 
-    await DummyPaymentsData.clearAll();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Transactions cleared'),
-        behavior: SnackBarBehavior.floating,
+      await sl<LocalStorage>().setLoginPassword(request.password);
+      if (!mounted) return;
+
+      final message = response.message.trim().isNotEmpty
+          ? response.message.trim()
+          : 'Password updated';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      Navigator.of(context).pop();
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final parsed = LoginResponse.tryParse(e.response?.data);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            parsed?.failureMessage ??
+                'Unable to reset password. Please try again.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to reset password. Please try again.')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(
+        'Reset password',
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: PaxPaymentColors.darkGrayText,
+            ),
       ),
+      content: SingleChildScrollView(
+        child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.email],
+              enabled: !_isSubmitting,
+              style: const TextStyle(fontSize: 13),
+              decoration: _fieldDecoration(
+                label: PaxPaymentStrings.email,
+                hint: PaxPaymentStrings.enterEmail,
+                prefixIcon: Icons.email_outlined,
+              ).copyWith(
+                labelStyle: const TextStyle(fontSize: 12),
+                hintStyle: const TextStyle(fontSize: 12),
+                floatingLabelStyle: const TextStyle(fontSize: 12),
+              ),
+              validator: (value) {
+                final email = value?.trim() ?? '';
+                if (email.isEmpty) return 'Enter your email';
+                if (!email.contains('@') || !email.contains('.')) {
+                  return 'Enter a valid email address';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: PaxPaymentSpacing.sp12),
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.next,
+              enabled: !_isSubmitting,
+              decoration: _fieldDecoration(
+                label: 'New password',
+                hint: 'Enter new password',
+                suffixIcon: IconButton(
+                  tooltip: _obscurePassword ? 'Show' : 'Hide',
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: PaxPaymentColors.mediumGray,
+                  ),
+                ),
+              ),
+              validator: (value) {
+                final s = value ?? '';
+                if (s.isEmpty) return 'Enter a password';
+                if (s.length < 6) return 'Password must be at least 6 characters';
+                return null;
+              },
+            ),
+            const SizedBox(height: PaxPaymentSpacing.sp12),
+            TextFormField(
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirm,
+              textInputAction: TextInputAction.done,
+              enabled: !_isSubmitting,
+              onFieldSubmitted: (_) => _onSubmit(),
+              decoration: _fieldDecoration(
+                label: 'Confirm password',
+                hint: 'Re-enter new password',
+                suffixIcon: IconButton(
+                  tooltip: _obscureConfirm ? 'Show' : 'Hide',
+                  onPressed: () =>
+                      setState(() => _obscureConfirm = !_obscureConfirm),
+                  icon: Icon(
+                    _obscureConfirm
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    color: PaxPaymentColors.mediumGray,
+                  ),
+                ),
+              ),
+              validator: (value) {
+                final s = value ?? '';
+                if (s.isEmpty) return 'Confirm your password';
+                if (s != _passwordController.text) {
+                  return 'Passwords do not match';
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _isSubmitting ? null : _onSubmit,
+          child: _isSubmitting
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text(
+                  'Reset password',
+                  style: TextStyle(fontSize: 13),
+                ),
+        ),
+      ],
     );
   }
 }

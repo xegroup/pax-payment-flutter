@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:pax_payment/features/auth/data/logout_response.dart';
+import 'package:pax_payment/features/auth/data/password_reset_request.dart';
 import 'package:pax_payment/features/auth/data/save_settings_response.dart';
 import 'package:pax_payment/features/auth/data/settings_model.dart';
 import 'package:pax_payment/features/transaction/data/transaction_request.dart';
@@ -21,6 +22,14 @@ abstract class ApiService {
   @POST("api/app/auth/login")
   @DioResponseType(ResponseType.plain)
   Future<LoginResponse> login(@Body() Map<String, dynamic> body);
+
+  @POST("api/app/auth/forgot-password")
+  @DioResponseType(ResponseType.plain)
+  Future<LoginResponse> forgotPassword(@Query("email") String email);
+
+  @POST("api/app/auth/reset-password")
+  @DioResponseType(ResponseType.plain)
+  Future<LoginResponse> resetPassword(@Body() PasswordResetRequest body);
 
   @POST("api/app/auth/register")
   @DioResponseType(ResponseType.plain)
@@ -53,5 +62,5 @@ abstract class ApiService {
       );
 
   @GET("api/app/settings")
-  Future<SaveSettingsResponse> getSettings();
+  Future<SettingsModel> getSettings();
 }

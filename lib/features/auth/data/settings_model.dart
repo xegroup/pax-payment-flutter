@@ -9,6 +9,7 @@ class SettingsModel {
   final String? managerPin;
   final String? terminalName;
   final String? profileImage;
+  final String? paymentScreenLogo;
   final String? businessName;
   final String? businessNumber;
   final String? businessEmail;
@@ -22,12 +23,13 @@ class SettingsModel {
     this.managerPin,
     this.terminalName,
     this.profileImage,
+    this.paymentScreenLogo,
     this.businessName,
     this.businessNumber,
     this.businessEmail,
     this.businessAddress,
     this.terminalId,
-    this.merchantId,
+    this.merchantId
   });
 
   // From JSON to Dart object
