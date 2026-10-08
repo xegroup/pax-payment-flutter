@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_glide/flutter_glide.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../responsive/responsive.dart';
 import '../theme/pax_colors.dart';
@@ -31,18 +33,33 @@ class PaxPaymentAppIcon extends StatelessWidget {
 
 /// Horizontal brand logo for checkout and headers.
 class PaxPaymentLogo extends StatelessWidget {
-  const PaxPaymentLogo({super.key, this.height});
+  const PaxPaymentLogo({super.key, this.height, this.imageUrl});
 
   /// Defaults to 36 on phone, 40 on tablet.
   final double? height;
+
+  /// Remote logo from saved settings. Falls back to the bundled mark when empty.
+  final String? imageUrl;
+
+  static const _assetLogo = 'assets/images/logo.png';
+  static const _apiOrigin = 'https://api-app.xepay.co.uk';
 
   @override
   Widget build(BuildContext context) {
     final r = Responsive.of(context);
     final double logoHeight = height ?? r.value(mobile: 36.0, tablet: 40.0);
+    final resolvedUrl = _resolveUrl(imageUrl);
+    if (resolvedUrl != null) {
+      final width = logoHeight * 4.2;
+      return SizedBox(
+        width: width,
+        height: logoHeight,
+        child: _networkLogo(resolvedUrl, width, logoHeight),
+      );
+    }
+
     final radius = logoHeight * 0.22;
     final imageHeight = logoHeight * 0.62;
-
     return Padding(
       padding: EdgeInsets.only(
         top: r.value(mobile: 4.0, tablet: 6.0),
@@ -57,12 +74,56 @@ class PaxPaymentLogo extends StatelessWidget {
           borderRadius: BorderRadius.circular(radius),
         ),
         child: Image.asset(
-          'assets/images/logo.png',
+          _assetLogo,
           height: imageHeight,
           fit: BoxFit.contain,
         ),
       ),
     );
+  }
+
+  Widget _networkLogo(String url, double width, double height) {
+    final path = Uri.tryParse(url)?.path.toLowerCase() ?? url.toLowerCase();
+    if (path.endsWith('.svg')) {
+      return SvgPicture.network(
+        url,
+        width: width,
+        height: height,
+        fit: BoxFit.contain,
+        placeholderBuilder: (_) => SizedBox(width: width, height: height),
+      );
+    }
+
+    return GlideImage(
+      url,
+      width: width,
+      height: height,
+      fit: BoxFit.contain,
+      placeholder: SizedBox(width: width, height: height),
+      errorWidget: Image.network(
+        url,
+        width: width,
+        height: height,
+        fit: BoxFit.contain,
+        errorBuilder: (_, _, _) => Image.asset(
+          _assetLogo,
+          width: width,
+          height: height,
+          fit: BoxFit.contain,
+        ),
+      ),
+    );
+  }
+
+  String? _resolveUrl(String? raw) {
+    var value = raw?.trim() ?? '';
+    if (value.isEmpty || value.startsWith('data:image')) return null;
+    value = value.replaceAll('&amp;', '&');
+    final uri = Uri.tryParse(value);
+    final scheme = uri?.scheme.toLowerCase();
+    if (scheme == 'http' || scheme == 'https') return uri.toString();
+    if (value.startsWith('//')) return 'https:$value';
+    return '$_apiOrigin${value.startsWith('/') ? value : '/$value'}';
   }
 }
 

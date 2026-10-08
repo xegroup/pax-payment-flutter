@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../features/auth/data/settings_model.dart';
 import '../constants/pref_keys.dart';
 import '../security/secure_storage_service.dart';
 
@@ -82,6 +85,87 @@ class LocalStorage {
 
   Future<void> setAutoPrintReceipt(bool v) =>
       _prefs.setBool(PrefKeys.autoPrintReceipt, v);
+
+  /// Logo URL saved with app settings (`logo` or `paymentScreenLogo`).
+  String get paymentScreenLogo {
+    final fromModel = appSettings?.paymentScreenLogo?.trim() ?? '';
+    if (fromModel.isNotEmpty) return fromModel;
+
+    final raw = _prefs.getString(PrefKeys.appSettings);
+    if (raw == null || raw.trim().isEmpty) return '';
+    try {
+      final decoded = jsonDecode(raw);
+      return _findLogoUrl(decoded) ?? '';
+    } catch (_) {}
+    return '';
+  }
+
+  static const _logoKeys = [
+    'paymentScreenLogo',
+    'payment_screen_logo',
+    'logo',
+    'logoUrl',
+    'logo_url',
+    'imageUrl',
+    'image_url',
+  ];
+
+  String? _findLogoUrl(Object? node) {
+    if (node is Map) {
+      for (final key in _logoKeys) {
+        final value = node[key]?.toString().trim() ?? '';
+        if (value.isNotEmpty && value.toLowerCase() != 'null') return value;
+      }
+      for (final value in node.values) {
+        final found = _findLogoUrl(value);
+        if (found != null) return found;
+      }
+    } else if (node is List) {
+      for (final value in node) {
+        final found = _findLogoUrl(value);
+        if (found != null) return found;
+      }
+    }
+    return null;
+  }
+
+  /// Cached `GET api/app/settings` payload, without the manager PIN.
+  SettingsModel? get appSettings {
+    final raw = _prefs.getString(PrefKeys.appSettings);
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      return SettingsModel.fromJson(Map<String, dynamic>.from(decoded));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Persists remote settings for later screens.
+  ///
+  /// Manager PIN is stored in secure storage, not in [SharedPreferences].
+  Future<void> saveRemoteSettings(SettingsModel settings) async {
+    await setTipsEnabled(settings.tipEnabled);
+    await setCashEnabled(settings.cashPaymentEnabled);
+
+    final pin = settings.managerPin?.trim() ?? '';
+    if (pin.isNotEmpty) {
+      await setManagerPin(pin);
+    }
+
+    final terminalName = settings.terminalName?.trim();
+    if (terminalName != null && terminalName.isNotEmpty) {
+      await setTerminalName(terminalName);
+    }
+
+    await setTerminalId(settings.terminalId?.trim() ?? '');
+    await setMid(settings.merchantId?.trim() ?? '');
+
+    final cached = Map<String, dynamic>.from(settings.toJson())
+      ..remove('managerPin');
+    await _prefs.setString(PrefKeys.appSettings, jsonEncode(cached));
+  }
 
   /// print | digital | ask | none
   String get receiptType => _prefs.getString(PrefKeys.receiptType) ?? 'ask';

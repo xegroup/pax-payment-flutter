@@ -13,7 +13,9 @@ SettingsModel _$SettingsModelFromJson(Map<String, dynamic> json) =>
       managerPin: json['managerPin'] as String?,
       terminalName: json['terminalName'] as String?,
       profileImage: json['profileImage'] as String?,
-      paymentScreenLogo: json['paymentScreenLogo'] as String?,
+      paymentScreenLogo:
+          SettingsModel._readPaymentScreenLogo(json, 'paymentScreenLogo')
+              as String?,
       businessName: json['businessName'] as String?,
       businessNumber: json['businessNumber'] as String?,
       businessEmail: json['businessEmail'] as String?,

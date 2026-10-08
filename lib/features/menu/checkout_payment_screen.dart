@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
+import '../../core/network/MyApiClient.dart';
 import '../../screens/payment_flow_helpers.dart';
 import '../../shared/responsive/responsive.dart';
 import '../../shared/theme/paxpayment_colors.dart';
@@ -79,6 +80,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   int _currentPaymentIndex = 0;
   bool _isProcessing = false;
   double _selectedTip = 0;
+  String _paymentLogoUrl = '';
 
 
   double totalAmount=0.0;
@@ -89,9 +91,29 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   void initState() {
     super.initState();
     _method = widget.initialMethod ?? CheckoutPaymentMethod.cardTap;
+    _paymentLogoUrl = sl<LocalStorage>().paymentScreenLogo;
     if (!sl<LocalStorage>().cashEnabled &&
         _method == CheckoutPaymentMethod.cash) {
       _method = CheckoutPaymentMethod.cardTap;
+    }
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final settings = await MyApiClient.getSettings();
+      await sl<LocalStorage>().saveRemoteSettings(settings);
+      if (!mounted) return;
+      final logo = settings.paymentScreenLogo?.trim() ?? '';
+      setState(() {
+        if (logo.isNotEmpty) _paymentLogoUrl = logo;
+        if (!sl<LocalStorage>().cashEnabled &&
+            _method == CheckoutPaymentMethod.cash) {
+          _method = CheckoutPaymentMethod.cardTap;
+        }
+      });
+    } catch (_) {
+      // Keep the last saved settings if this request fails.
     }
   }
 
@@ -143,6 +165,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     return PaxPosAppBar(
       logo: PaxPaymentLogo(
         height: r.value(mobile: 36.0, tablet: 40.0),
+        imageUrl: _paymentLogoUrl,
       ),
       showTitle: false,
       centerLogo: true,

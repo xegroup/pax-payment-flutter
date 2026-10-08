@@ -84,7 +84,7 @@ class SettingsScreen extends StatelessWidget {
 
     try {
       final settings = await MyApiClient.getSettings();
-      final storedPin = settings.settings?.managerPin?.trim() ?? '';
+      final storedPin = settings.managerPin?.trim() ?? '';
       if (storedPin.isEmpty || storedPin != currentPin) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -112,8 +112,8 @@ class SettingsScreen extends StatelessWidget {
 
       await MyApiClient.saveSettings(
         SettingsModel(
-          tipEnabled: settings.settings?.tipEnabled ?? false,
-          cashPaymentEnabled: settings.settings?.cashPaymentEnabled ?? false,
+          tipEnabled: settings.tipEnabled,
+          cashPaymentEnabled: settings.cashPaymentEnabled,
           managerPin: newPin,
         ),
       );
