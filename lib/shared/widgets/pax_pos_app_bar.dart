@@ -33,7 +33,9 @@ class PaxPaymentAppIcon extends StatelessWidget {
 
 /// Horizontal brand logo for checkout and headers.
 class PaxPaymentLogo extends StatelessWidget {
-  const PaxPaymentLogo({super.key, this.height, this.imageUrl});
+  const PaxPaymentLogo({super.key, this.width, this.height, this.imageUrl});
+
+  final double? width;
 
   /// Defaults to 36 on phone, 40 on tablet.
   final double? height;
@@ -50,20 +52,21 @@ class PaxPaymentLogo extends StatelessWidget {
     final double logoHeight = height ?? r.value(mobile: 36.0, tablet: 40.0);
     final resolvedUrl = _resolveUrl(imageUrl);
     if (resolvedUrl != null) {
-      final width = logoHeight * 4.2;
-      return SizedBox(
-        width: width,
-        height: logoHeight,
-        child: _networkLogo(resolvedUrl, width, logoHeight),
+      final logoWidth = width ?? logoHeight * 4.2;
+      return Padding(
+        padding: const EdgeInsets.all(5),
+        child: SizedBox(
+          width: logoWidth,
+          height: logoHeight,
+          child: _networkLogo(resolvedUrl, logoWidth, logoHeight),
+        ),
       );
     }
 
     final radius = logoHeight * 0.22;
     final imageHeight = logoHeight * 0.62;
     return Padding(
-      padding: EdgeInsets.only(
-        top: r.value(mobile: 4.0, tablet: 6.0),
-      ),
+      padding: const EdgeInsets.all(5),
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: r.value(mobile: 12.0, tablet: 14.0),
@@ -216,6 +219,7 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.centerLogo = false,
     this.trailing = const [],
     this.compactWidth = 380,
+    this.toolbarHeight = kToolbarHeight,
   });
 
   final VoidCallback? onGoBack;
@@ -228,9 +232,10 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool centerLogo;
   final List<Widget> trailing;
   final double compactWidth;
+  final double toolbarHeight;
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => Size.fromHeight(toolbarHeight);
 
   @override
   Widget build(BuildContext context) {
@@ -247,7 +252,7 @@ class PaxPosAppBar extends StatelessWidget implements PreferredSizeWidget {
       child: SafeArea(
         bottom: false,
         child: SizedBox(
-          height: kToolbarHeight,
+          height: toolbarHeight,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: hPad),
             child: centerLogo

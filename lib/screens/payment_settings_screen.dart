@@ -23,6 +23,7 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
   late bool _autoPrint;
   late String _receiptType;
   bool _isSaving = false;
+  bool _isLoading = true;
 
   static const _receiptOptions = <({String value, String label})>[
     (value: 'print', label: 'Print'),
@@ -35,10 +36,27 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
   void initState() {
     super.initState();
     final s = sl<LocalStorage>();
-    _tipsEnabled = s.tipsEnabled;
-    _cashEnabled = s.cashEnabled;
+    final saved = s.appSettings;
+    _tipsEnabled = saved?.tipEnabled ?? s.tipsEnabled;
+    _cashEnabled = saved?.cashPaymentEnabled ?? s.cashEnabled;
     _autoPrint = s.autoPrintReceipt;
     _receiptType = s.receiptType;
+    _loadRemoteSettings();
+  }
+
+  Future<void> _loadRemoteSettings() async {
+    try {
+      final settings = await MyApiClient.getSettings();
+      await sl<LocalStorage>().saveRemoteSettings(settings);
+      if (!mounted) return;
+      setState(() {
+        _tipsEnabled = settings.tipEnabled;
+        _cashEnabled = settings.cashPaymentEnabled;
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   LocalStorage get _storage => sl<LocalStorage>();
@@ -114,7 +132,9 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
               title: const Text('Enable tips'),
               subtitle: const Text('Show tip screen before payment'),
               value: _tipsEnabled,
-              onChanged: (v) => setState(() => _tipsEnabled = v),
+              onChanged: _isLoading
+                  ? null
+                  : (v) => setState(() => _tipsEnabled = v),
             ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
@@ -123,7 +143,9 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
               title: const Text('Enable cash payments'),
               subtitle: const Text('Allow cash as a payment method'),
               value: _cashEnabled,
-              onChanged: (v) => setState(() => _cashEnabled = v),
+              onChanged: _isLoading
+                  ? null
+                  : (v) => setState(() => _cashEnabled = v),
             ),
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
@@ -149,7 +171,7 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
           ),
           const SizedBox(height: PaxPaymentSpacing.sp16),
           FilledButton(
-            onPressed: _isSaving ? null : _savePaymentSettings,
+            onPressed: _isSaving || _isLoading ? null : _savePaymentSettings,
             style: FilledButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
             ),

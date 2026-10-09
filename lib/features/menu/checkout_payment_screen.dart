@@ -161,10 +161,11 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   }
 
   PreferredSizeWidget _buildCheckoutAppBar(BuildContext context) {
-    final r = Responsive.of(context);
     return PaxPosAppBar(
+      toolbarHeight: 80,
       logo: PaxPaymentLogo(
-        height: r.value(mobile: 36.0, tablet: 40.0),
+        width: 150,
+        height: 100,
         imageUrl: _paymentLogoUrl,
       ),
       showTitle: false,
