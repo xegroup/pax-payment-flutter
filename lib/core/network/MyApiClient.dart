@@ -239,14 +239,13 @@ class MyApiClient {
     return instance.saveSettings(body);
   }
 
-  static Future<SaveSettingsResponse> getSettings() async {
+  static Future<SettingsModel> getSettings() async {
     await loadPersistedAuthToken();
     if (_dio == null) {
       throw Exception('ApiService not initialized! Call init(baseUrl) first.');
     }
 
     final response = await _dio!.get<dynamic>('api/app/settings');
-
     final code = response.statusCode ?? 0;
     if (code == 401 || code == 403) {
       throw DioException(
@@ -257,7 +256,7 @@ class MyApiClient {
       );
     }
 
-    final parsed = SaveSettingsResponse.tryParse(response.data);
+    final parsed = SettingsModel.tryParse(response.data);
     if (parsed == null) {
       throw DioException(
         requestOptions: response.requestOptions,

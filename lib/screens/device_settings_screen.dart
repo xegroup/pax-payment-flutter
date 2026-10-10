@@ -85,7 +85,7 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
   }) async {
     final settings = await MyApiClient.getSettings();
     await MyApiClient.saveSettings(
-      buildPayload(settings.settings, value),
+      buildPayload(settings, value),
     );
     await saveLocal(value);
     updateState(value);

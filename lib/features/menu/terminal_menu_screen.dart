@@ -11,7 +11,6 @@ import '../../shared/theme/paxpayment_colors.dart';
 import '../../shared/theme/paxpayment_spacing.dart';
 import '../../screens/device_settings_screen.dart';
 import '../../screens/payment_settings_screen.dart';
-import 'payment_links_screen.dart';
 import 'reports_analytics_screen.dart';
 import 'settings_screen.dart';
 import 'transactions_list_screen.dart';
@@ -148,19 +147,6 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _MenuTile(
-            title: 'POS integrations',
-            subtitle: 'Payment links and integrations.',
-            icon: Icons.qr_code_rounded,
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const PaymentLinksScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          _MenuTile(
             title: 'Payment settings',
             subtitle: 'Tips, cash, receipts, and auto-print.',
             icon: Icons.tune_rounded,
@@ -233,16 +219,6 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
                   )
                 : const Icon(Icons.logout_rounded),
             label: Text(_isLoggingOut ? 'Logging out…' : 'Log out'),
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp16),
-          Center(
-            child: Text(
-              'POSLink Testing - XePOS',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: PaxPaymentColors.mediumGray,
-                    fontWeight: FontWeight.w600,
-                  ),
-            ),
           ),
         ],
       ),
