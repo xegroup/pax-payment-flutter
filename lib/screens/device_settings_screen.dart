@@ -1,11 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../core/di/injection.dart';
 import '../core/database/local_storage.dart';
-import '../core/network/MyApiClient.dart';
-import '../features/auth/data/settings_model.dart';
 import '../shared/theme/paxpayment_colors.dart';
 import '../shared/theme/paxpayment_spacing.dart';
 
@@ -40,110 +37,6 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
     });
   }
 
-  Future<void> _editTerminalId() => _editStoredValue(
-        currentValue: _tid,
-        title: 'Terminal ID',
-        hintText: 'Enter terminal ID',
-        saveLabel: 'Terminal ID saved',
-        onSaved: (value) => _saveDeviceSetting(
-          value: value,
-          saveLocal: (v) => sl<LocalStorage>().setTerminalId(v),
-          updateState: (v) => setState(() => _tid = v),
-          buildPayload: (current, v) => SettingsModel(
-            tipEnabled: current?.tipEnabled ?? sl<LocalStorage>().tipsEnabled,
-            cashPaymentEnabled:
-                current?.cashPaymentEnabled ?? sl<LocalStorage>().cashEnabled,
-            terminalId: v,
-          ),
-        ),
-      );
-
-  Future<void> _editMerchantId() => _editStoredValue(
-        currentValue: _mid,
-        title: 'Merchant ID',
-        hintText: 'Enter merchant ID',
-        saveLabel: 'Merchant ID saved',
-        onSaved: (value) => _saveDeviceSetting(
-          value: value,
-          saveLocal: (v) => sl<LocalStorage>().setMid(v),
-          updateState: (v) => setState(() => _mid = v),
-          buildPayload: (current, v) => SettingsModel(
-            tipEnabled: current?.tipEnabled ?? sl<LocalStorage>().tipsEnabled,
-            cashPaymentEnabled:
-                current?.cashPaymentEnabled ?? sl<LocalStorage>().cashEnabled,
-            merchantId: v,
-          ),
-        ),
-      );
-
-  Future<void> _saveDeviceSetting({
-    required String value,
-    required Future<void> Function(String value) saveLocal,
-    required void Function(String value) updateState,
-    required SettingsModel Function(SettingsModel? current, String value)
-        buildPayload,
-  }) async {
-    final settings = await MyApiClient.getSettings();
-    await MyApiClient.saveSettings(
-      buildPayload(settings, value),
-    );
-    await saveLocal(value);
-    updateState(value);
-  }
-
-  Future<void> _editStoredValue({
-    required String currentValue,
-    required String title,
-    required String hintText,
-    required String saveLabel,
-    required Future<void> Function(String value) onSaved,
-  }) async {
-    final saved = await showDialog<String>(
-      context: context,
-      builder: (ctx) => _EditValueDialog(
-        title: title,
-        hintText: hintText,
-        initialValue: currentValue,
-      ),
-    );
-
-    if (saved == null || !mounted) return;
-
-    try {
-      await onSaved(saved);
-    } on DioException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.message?.trim().isNotEmpty == true
-                ? e.message!.trim()
-                : 'Failed to save',
-          ),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to save'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(saveLabel),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   String _displayValue(String value) => value.isEmpty ? 'Not set' : value;
 
   @override
@@ -166,87 +59,19 @@ class _DeviceSettingsScreenState extends State<DeviceSettingsScreen> {
             icon: Icons.info_outline_rounded,
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
-          _EditableInfoTile(
+          _InfoTile(
             title: 'Terminal ID',
             value: _displayValue(_tid),
             icon: Icons.point_of_sale_outlined,
-            editTooltip: 'Edit terminal ID',
-            onEdit: _editTerminalId,
           ),
           const SizedBox(height: PaxPaymentSpacing.sp10),
-          _EditableInfoTile(
+          _InfoTile(
             title: 'Merchant ID',
             value: _displayValue(_mid),
             icon: Icons.store_outlined,
-            editTooltip: 'Edit merchant ID',
-            onEdit: _editMerchantId,
           ),
         ],
       ),
-    );
-  }
-}
-
-class _EditValueDialog extends StatefulWidget {
-  const _EditValueDialog({
-    required this.title,
-    required this.hintText,
-    required this.initialValue,
-  });
-
-  final String title;
-  final String hintText;
-  final String initialValue;
-
-  @override
-  State<_EditValueDialog> createState() => _EditValueDialogState();
-}
-
-class _EditValueDialogState extends State<_EditValueDialog> {
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initialValue);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _save() {
-    final value = _controller.text.trim();
-    if (value.isEmpty) return;
-    Navigator.pop(context, value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        decoration: InputDecoration(
-          hintText: widget.hintText,
-          border: const OutlineInputBorder(),
-        ),
-        textInputAction: TextInputAction.done,
-        onSubmitted: (_) => _save(),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: _save,
-          child: const Text('Save'),
-        ),
-      ],
     );
   }
 }
@@ -275,45 +100,6 @@ class _InfoTile extends StatelessWidget {
           ),
         ),
       );
-}
-
-class _EditableInfoTile extends StatelessWidget {
-  const _EditableInfoTile({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.onEdit,
-    required this.editTooltip,
-  });
-
-  final String title;
-  final String value;
-  final IconData icon;
-  final VoidCallback onEdit;
-  final String editTooltip;
-
-  @override
-  Widget build(BuildContext context) {
-    return _DeviceCard(
-      child: ListTile(
-        leading: Icon(icon, color: PaxPaymentColors.darkGrayText),
-        title: Text(title),
-        subtitle: Text(
-          value,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        trailing: IconButton(
-          onPressed: onEdit,
-          icon: const Icon(Icons.edit_outlined),
-          color: PaxPaymentColors.primaryBlue,
-          tooltip: editTooltip,
-        ),
-        onTap: onEdit,
-      ),
-    );
-  }
 }
 
 class _DeviceCard extends StatelessWidget {
