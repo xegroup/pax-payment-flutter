@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/auth/session_service.dart';
 import '../../core/network/MyApiClient.dart';
 import '../../shared/responsive/responsive.dart';
-import '../../shared/theme/paxpayment_colors.dart';
 import '../menu/checkout_payment_screen.dart';
 import 'login_screen.dart';
 
@@ -70,13 +69,26 @@ class _SplashScreenState extends State<SplashScreen> {
     );
 
     return Scaffold(
-      backgroundColor: PaxPaymentColors.primaryBlue,
-      body: Center(
-        child: Image.asset(
-          'assets/images/xepay_icon.png',
-          width: iconSize,
-          height: iconSize,
-          fit: BoxFit.contain,
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.15,
+            colors: [
+              Color(0xFF001331),
+              Color(0xFF000B25),
+              Color(0xFF000000),
+            ],
+            stops: [0.0, 0.55, 1.0],
+          ),
+        ),
+        child: Center(
+          child: Image.asset(
+            'assets/images/xepay_icon.png',
+            width: iconSize,
+            height: iconSize,
+            fit: BoxFit.contain,
+          ),
         ),
       ),
     );
