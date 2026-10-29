@@ -93,7 +93,8 @@ class TransactionDataModel {
     };
   }
 
-  double get amountMajor => amount / 100;
+  /// API `amount` is already in pounds. Dividing by 100 turns 12.00 into 0.12.
+  double get amountMajor => amount;
 
   PaymentTransaction toPaymentTransaction() {
     return PaymentTransaction(

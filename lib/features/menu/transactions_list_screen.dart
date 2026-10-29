@@ -357,7 +357,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('Refund payment?'),
         content: Text(
-          'Refund ${_money.format(tx.amount*100)} for transaction ${tx.id}?',
+          'Refund ${_money.format(tx.amount)} for transaction ${tx.id}?',
         ),
         actions: [
           TextButton(
@@ -385,7 +385,7 @@ class _TransactionsListScreenState extends State<TransactionsListScreen> {
   Future<void> _runRefund(PaymentTransaction tx) async {
     setState(() => _refundingId = tx.id);
     try {
-      final amountCents = (tx.amount*100*100).round();
+      final amountCents = (tx.amount * 100).round();
       final originalId = tx.refundOriginalId;
       final result = await _paymentService.startRefund(
         amount: amountCents,
@@ -583,7 +583,7 @@ class _PaymentGridTile extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          money.format(tx.amount*100).toString(),
+                          money.format(tx.amount),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context)

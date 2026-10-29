@@ -1,11 +1,15 @@
 package com.xepos.pax.payment
 
+import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -26,13 +30,86 @@ class MainActivity : FlutterFragmentActivity() {
     private var pendingOriginalTransactionId: String = ""
 
     private lateinit var evoActivityLauncher: ActivityResultLauncher<Intent>
+    private lateinit var storagePermissionLauncher: ActivityResultLauncher<Array<String>>
+    private lateinit var allFilesAccessLauncher: ActivityResultLauncher<Intent>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        storagePermissionLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions(),
+        ) { granted ->
+            if (granted[Manifest.permission.WRITE_EXTERNAL_STORAGE] == true ||
+                DeviceLogFile.canWriteSharedStorage(this)
+            ) {
+                createDeviceLog()
+            }
+        }
+        allFilesAccessLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult(),
+        ) {
+            if (DeviceLogFile.canWriteSharedStorage(this)) {
+                createDeviceLog()
+            }
+        }
         evoActivityLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
             onEvoActivityResult(result.resultCode, result.data)
+        }
+        createDeviceLog()
+        if (!DeviceLogFile.isInDownloads(this)) {
+            requestStoragePermission()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!logFileReady && DeviceLogFile.canWriteSharedStorage(this)) {
+            createDeviceLog()
+        }
+    }
+
+    private fun requestStoragePermission() {
+        if (storagePromptShown) return
+        storagePromptShown = true
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                allFilesAccessLauncher.launch(
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = Uri.parse("package:$packageName")
+                    },
+                )
+            } catch (e: Exception) {
+                allFilesAccessLauncher.launch(
+                    Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION),
+                )
+            }
+            return
+        }
+        storagePermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            ),
+        )
+    }
+
+    private fun createDeviceLog() {
+        if (logFileReady && DeviceLogFile.isInDownloads(this)) return
+        val note = if (!startupLogged) {
+            startupLogged = true
+            "Log file created.\nPath: ${DeviceLogFile.sharedLogPath()}"
+        } else {
+            "Storage permission granted.\nPath: ${DeviceLogFile.sharedLogPath()}"
+        }
+        DeviceLogFile.append(this, note)
+        if (DeviceLogFile.isInDownloads(this)) {
+            logFileReady = true
+            Toast.makeText(
+                this,
+                "Payment log saved to Downloads/evo_payment_log.txt",
+                Toast.LENGTH_LONG,
+            ).show()
         }
     }
 
@@ -163,6 +240,14 @@ class MainActivity : FlutterFragmentActivity() {
                         result.success(null)
                     }
 
+                    "appendDeviceLog" -> {
+                        val text = call.argument<String>("text").orEmpty()
+                        if (text.isNotBlank()) {
+                            DeviceLogFile.append(this, text)
+                        }
+                        result.success(DeviceLogFile.appLogPath(this))
+                    }
+
                     else -> result.notImplemented()
                 }
             }
@@ -177,23 +262,7 @@ class MainActivity : FlutterFragmentActivity() {
             putExtra("title", title)
         }
 
-        try {
-            evoActivityLauncher.launch(intent)
-        } catch (e: ActivityNotFoundException) {
-            pendingResult?.error(
-                "EVO_APP_MISSING",
-                "EVO Payments app is not installed.",
-                null,
-            )
-            pendingResult = null
-        } catch (e: Exception) {
-            pendingResult?.error(
-                "EVO_LAUNCH_ERROR",
-                e.message ?: "Failed to launch EVO Payments app.",
-                null,
-            )
-            pendingResult = null
-        }
+        launchEvoIntent(intent, "sale")
     }
 
     private fun startEvoRefund(
@@ -218,23 +287,7 @@ class MainActivity : FlutterFragmentActivity() {
             putExtra("slipNumber", slipNumber)
         }
 
-        try {
-            evoActivityLauncher.launch(intent)
-        } catch (e: ActivityNotFoundException) {
-            pendingResult?.error(
-                "EVO_APP_MISSING",
-                "EVO Payments app is not installed.",
-                null,
-            )
-            pendingResult = null
-        } catch (e: Exception) {
-            pendingResult?.error(
-                "EVO_LAUNCH_ERROR",
-                e.message ?: "Failed to launch EVO Payments app.",
-                null,
-            )
-            pendingResult = null
-        }
+        launchEvoIntent(intent, "refund")
     }
     private fun startEvoSettlement(
         refId: String?,
@@ -248,9 +301,26 @@ class MainActivity : FlutterFragmentActivity() {
             putExtra("reqReportFile", reqReportFile)
         }
 
+        launchEvoIntent(intent, "settlement")
+    }
+
+    private fun launchEvoIntent(intent: Intent, operation: String) {
+        DeviceLogFile.logEvoIntent(
+            context = this,
+            phase = "REQUEST",
+            operation = operation,
+            intent = intent,
+        )
         try {
             evoActivityLauncher.launch(intent)
         } catch (e: ActivityNotFoundException) {
+            DeviceLogFile.logEvoIntent(
+                context = this,
+                phase = "ERROR",
+                operation = operation,
+                intent = intent,
+                error = "EVO Payments app is not installed.",
+            )
             pendingResult?.error(
                 "EVO_APP_MISSING",
                 "EVO Payments app is not installed.",
@@ -258,9 +328,17 @@ class MainActivity : FlutterFragmentActivity() {
             )
             pendingResult = null
         } catch (e: Exception) {
+            val message = e.message ?: "Failed to launch EVO Payments app."
+            DeviceLogFile.logEvoIntent(
+                context = this,
+                phase = "ERROR",
+                operation = operation,
+                intent = intent,
+                error = message,
+            )
             pendingResult?.error(
                 "EVO_LAUNCH_ERROR",
-                e.message ?: "Failed to launch EVO Payments app.",
+                message,
                 null,
             )
             pendingResult = null
@@ -278,6 +356,14 @@ class MainActivity : FlutterFragmentActivity() {
         pendingOperation = "sale"
         pendingAmountCents = 0
         pendingOriginalTransactionId = ""
+
+        DeviceLogFile.logEvoIntent(
+            context = this,
+            phase = "RESULT",
+            operation = operation,
+            intent = data,
+            resultCode = resultCode,
+        )
 
         val payload = if (data != null) {
             logEvoResultExtras(
@@ -543,5 +629,8 @@ class MainActivity : FlutterFragmentActivity() {
 
     companion object {
         private const val TAG = "XePOS/MainActivity"
+        private var logFileReady = false
+        private var startupLogged = false
+        private var storagePromptShown = false
     }
 }
