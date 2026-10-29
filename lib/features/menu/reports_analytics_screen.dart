@@ -328,7 +328,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                     ),
                   )
                 : SizedBox(
-                    height: 220,
+                    height: 280,
                     child: LineChart(
                       LineChartData(
                         minX: 0,
@@ -366,27 +366,8 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                               ),
                             ),
                           ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: lineSpots.length > 8 ? 2 : 1,
-                              getTitlesWidget: (v, m) {
-                                final i = v.round();
-                                if (i < 0 || i >= cumulative.length) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    _axisDay.format(cumulative[i].$1),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: PaxPaymentColors.mediumGray,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                          bottomTitles: _bottomDateTitles(
+                            [for (final day in cumulative) day.$1],
                           ),
                         ),
                         lineBarsData: [
@@ -424,7 +405,7 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                     ),
                   )
                 : SizedBox(
-                    height: 240,
+                    height: 300,
                     child: BarChart(
                       BarChartData(
                         alignment: BarChartAlignment.spaceAround,
@@ -460,27 +441,8 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                               ),
                             ),
                           ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              interval: daily.length > 12 ? 3 : 1,
-                              getTitlesWidget: (v, m) {
-                                final i = v.toInt();
-                                if (i < 0 || i >= daily.length) {
-                                  return const SizedBox.shrink();
-                                }
-                                return Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Text(
-                                    _axisDay.format(daily[i].$1),
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      color: PaxPaymentColors.mediumGray,
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                          bottomTitles: _bottomDateTitles(
+                            [for (final day in daily) day.$1],
                           ),
                         ),
                         barGroups: barGroups,
@@ -489,6 +451,35 @@ class _ReportsAnalyticsScreenState extends State<ReportsAnalyticsScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  AxisTitles _bottomDateTitles(List<DateTime> days) {
+    final crowded = days.length > 10;
+    return AxisTitles(
+      sideTitles: SideTitles(
+        showTitles: true,
+        interval: 1,
+        reservedSize: crowded ? 52 : 32,
+        getTitlesWidget: (value, meta) {
+          final index = value.round();
+          if (index < 0 || index >= days.length) {
+            return const SizedBox.shrink();
+          }
+          return SideTitleWidget(
+            meta: meta,
+            space: 8,
+            angle: crowded ? -0.9 : 0,
+            child: Text(
+              _axisDay.format(days[index]),
+              style: const TextStyle(
+                fontSize: 10,
+                color: PaxPaymentColors.mediumGray,
+              ),
+            ),
+          );
+        },
       ),
     );
   }

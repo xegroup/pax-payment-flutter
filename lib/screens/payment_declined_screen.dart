@@ -54,11 +54,6 @@ class _PaymentDeclinedScreenState extends State<PaymentDeclinedScreen> {
         body: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           children: [
-            Text(
-              'POSLink Testing - XePOS',
-              textAlign: TextAlign.center,
-              style: PaxTextStyles.caption.copyWith(color: TeyaColors.textGrey),
-            ),
             const SizedBox(height: 40),
             const Center(child: TeyaAnimatedResultIcon(success: false)),
             const SizedBox(height: 24),

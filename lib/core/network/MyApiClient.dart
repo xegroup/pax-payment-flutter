@@ -12,6 +12,7 @@ import '../../features/transaction/data/transactions_list_response.dart';
 import '../di/injection.dart';
 import '../security/secure_storage_service.dart';
 import '../services/api_service.dart';
+import '../logging/api_file_log_interceptor.dart';
 import 'AuthInterceptor.dart';
 import '../auth/auth_session.dart';
 
@@ -58,6 +59,7 @@ class MyApiClient {
       ),
     );
     _dio!.interceptors.add(_authInterceptor!);
+    _dio!.interceptors.add(ApiFileLogInterceptor());
     _dio!.interceptors.add(
       LogInterceptor(
         request: true,
