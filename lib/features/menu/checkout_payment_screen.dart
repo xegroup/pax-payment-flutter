@@ -81,6 +81,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   bool _isProcessing = false;
   double _selectedTip = 0;
   String _paymentLogoUrl = '';
+  bool _hideLogo = false;
 
 
   double totalAmount=0.0;
@@ -92,6 +93,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     super.initState();
     _method = widget.initialMethod ?? CheckoutPaymentMethod.cardTap;
     _paymentLogoUrl = sl<LocalStorage>().paymentScreenLogo;
+    _hideLogo = sl<LocalStorage>().hideCheckoutLogo;
     if (!sl<LocalStorage>().cashEnabled &&
         _method == CheckoutPaymentMethod.cash) {
       _method = CheckoutPaymentMethod.cardTap;
@@ -162,20 +164,27 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
 
   PreferredSizeWidget _buildCheckoutAppBar(BuildContext context) {
     return PaxPosAppBar(
-      toolbarHeight: 80,
-      logo: PaxPaymentLogo(
-        width: 150,
-        height: 100,
-        imageUrl: _paymentLogoUrl,
-      ),
+      toolbarHeight: _hideLogo ? kToolbarHeight : 80,
+      logo: _hideLogo
+          ? const SizedBox.shrink()
+          : PaxPaymentLogo(
+              width: 150,
+              height: 100,
+              imageUrl: _paymentLogoUrl,
+            ),
       showTitle: false,
-      centerLogo: true,
-      onMenu: () {
-        Navigator.of(context).push(
+      centerLogo: !_hideLogo,
+      onMenu: () async {
+        await Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const TerminalMenuScreen(),
           ),
         );
+        if (!mounted) return;
+        setState(() {
+          _hideLogo = sl<LocalStorage>().hideCheckoutLogo;
+          _paymentLogoUrl = sl<LocalStorage>().paymentScreenLogo;
+        });
       },
     );
   }

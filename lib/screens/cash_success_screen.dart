@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../core/di/injection.dart';
-import '../core/database/local_storage.dart';
 import '../features/menu/models/payment_transaction.dart';
 import '../services/printer_service.dart';
 import '../shared/theme/pax_text_styles.dart';
@@ -30,12 +28,6 @@ class CashSuccessScreen extends StatefulWidget {
 }
 
 class _CashSuccessScreenState extends State<CashSuccessScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPrint());
-  }
-
   PaymentTransaction get _transaction => PaymentTransaction(
         id: widget.transactionId,
         amount: widget.amount,
@@ -44,14 +36,8 @@ class _CashSuccessScreenState extends State<CashSuccessScreen> {
         customerName: 'Walk-in Customer',
         cardType: 'Cash',
         refundSupported: false,
-    evo: null
+        evo: null,
       );
-
-  Future<void> _maybeAutoPrint() async {
-    if (!sl<LocalStorage>().autoPrintReceipt) return;
-    if (!mounted) return;
-    await PrinterService.printReceipt(context, _transaction);
-  }
 
   void _onDone(BuildContext context) {
     if (widget.popWithResult) {

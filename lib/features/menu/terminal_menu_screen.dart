@@ -148,7 +148,7 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _MenuTile(
             title: 'Payment settings',
-            subtitle: 'Tips, cash, receipts, and auto-print.',
+            subtitle: 'Tips and cash payments.',
             icon: Icons.tune_rounded,
             onTap: () => openPaymentSettings(context),
           ),

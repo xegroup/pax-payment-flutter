@@ -9,7 +9,7 @@ import '../features/auth/data/settings_model.dart';
 import '../shared/theme/paxpayment_colors.dart';
 import '../shared/theme/paxpayment_spacing.dart';
 
-/// Tips, cash, receipt and print options for the terminal.
+/// Tips and cash options for the terminal.
 class PaymentSettingsScreen extends StatefulWidget {
   const PaymentSettingsScreen({super.key});
 
@@ -20,17 +20,8 @@ class PaymentSettingsScreen extends StatefulWidget {
 class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
   late bool _tipsEnabled;
   late bool _cashEnabled;
-  late bool _autoPrint;
-  late String _receiptType;
   bool _isSaving = false;
   bool _isLoading = true;
-
-  static const _receiptOptions = <({String value, String label})>[
-    (value: 'print', label: 'Print'),
-    (value: 'digital', label: 'Email'),
-    (value: 'ask', label: 'Ask Customer'),
-    (value: 'none', label: 'None'),
-  ];
 
   @override
   void initState() {
@@ -39,8 +30,6 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
     final saved = s.appSettings;
     _tipsEnabled = saved?.tipEnabled ?? s.tipsEnabled;
     _cashEnabled = saved?.cashPaymentEnabled ?? s.cashEnabled;
-    _autoPrint = s.autoPrintReceipt;
-    _receiptType = s.receiptType;
     _loadRemoteSettings();
   }
 
@@ -60,13 +49,6 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
   }
 
   LocalStorage get _storage => sl<LocalStorage>();
-
-  String get _receiptTypeLabel {
-    for (final o in _receiptOptions) {
-      if (o.value == _receiptType) return o.label;
-    }
-    return _receiptOptions.first.label;
-  }
 
   Future<void> _savePaymentSettings() async {
     if (_isSaving) return;
@@ -148,27 +130,6 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
                   : (v) => setState(() => _cashEnabled = v),
             ),
           ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          _SettingsCard(
-            child: SwitchListTile(
-              title: const Text('Auto print receipt'),
-              subtitle: const Text('Print automatically after successful payment'),
-              value: _autoPrint,
-              onChanged: (v) {
-                setState(() => _autoPrint = v);
-                _storage.setAutoPrintReceipt(v);
-              },
-            ),
-          ),
-          const SizedBox(height: PaxPaymentSpacing.sp10),
-          _SettingsCard(
-            child: ListTile(
-              title: const Text('Default receipt type'),
-              subtitle: Text(_receiptTypeLabel),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: _pickReceiptType,
-            ),
-          ),
           const SizedBox(height: PaxPaymentSpacing.sp16),
           FilledButton(
             onPressed: _isSaving || _isLoading ? null : _savePaymentSettings,
@@ -186,26 +147,6 @@ class _PaymentSettingsScreenState extends State<PaymentSettingsScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _pickReceiptType() async {
-    final picked = await showDialog<String>(
-      context: context,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Default receipt type'),
-        children: [
-          for (final o in _receiptOptions)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(ctx, o.value),
-              child: Text(o.label),
-            ),
-        ],
-      ),
-    );
-    if (picked != null && mounted) {
-      setState(() => _receiptType = picked);
-      await _storage.setReceiptType(picked);
-    }
   }
 }
 

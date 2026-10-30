@@ -81,10 +81,11 @@ class LocalStorage {
 
   Future<void> setCashEnabled(bool v) => _prefs.setBool(PrefKeys.cashEnabled, v);
 
-  bool get autoPrintReceipt => _prefs.getBool(PrefKeys.autoPrintReceipt) ?? false;
+  bool get hideCheckoutLogo =>
+      _prefs.getBool(PrefKeys.hideCheckoutLogo) ?? false;
 
-  Future<void> setAutoPrintReceipt(bool v) =>
-      _prefs.setBool(PrefKeys.autoPrintReceipt, v);
+  Future<void> setHideCheckoutLogo(bool v) =>
+      _prefs.setBool(PrefKeys.hideCheckoutLogo, v);
 
   /// Logo URL saved with app settings (`logo` or `paymentScreenLogo`).
   String get paymentScreenLogo {
@@ -166,9 +167,4 @@ class LocalStorage {
       ..remove('managerPin');
     await _prefs.setString(PrefKeys.appSettings, jsonEncode(cached));
   }
-
-  /// print | digital | ask | none
-  String get receiptType => _prefs.getString(PrefKeys.receiptType) ?? 'ask';
-
-  Future<void> setReceiptType(String v) => _prefs.setString(PrefKeys.receiptType, v);
 }

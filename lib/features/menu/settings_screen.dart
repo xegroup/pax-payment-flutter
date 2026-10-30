@@ -37,10 +37,12 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _SectionCard(
             title: 'Payment settings',
-            subtitle: 'Tips, cash, receipts, and auto-print.',
+            subtitle: 'Tips and cash payments.',
             icon: Icons.tune_rounded,
             onTap: () => openPaymentSettings(context),
           ),
+          const SizedBox(height: PaxPaymentSpacing.sp10),
+          const _HideLogoSetting(),
           const SizedBox(height: PaxPaymentSpacing.sp16),
           FilledButton.tonalIcon(
             onPressed: () => _goToPaymentScreen(context),
@@ -131,6 +133,69 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+}
+
+class _HideLogoSetting extends StatefulWidget {
+  const _HideLogoSetting();
+
+  @override
+  State<_HideLogoSetting> createState() => _HideLogoSettingState();
+}
+
+class _HideLogoSettingState extends State<_HideLogoSetting> {
+  late bool _hideLogo;
+
+  @override
+  void initState() {
+    super.initState();
+    _hideLogo = sl<LocalStorage>().hideCheckoutLogo;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(PaxPaymentSpacing.radiusXl);
+    return Material(
+      color: PaxPaymentColors.white,
+      borderRadius: radius,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+        ),
+        child: SwitchListTile(
+          secondary: Container(
+            padding: const EdgeInsets.all(PaxPaymentSpacing.sp10),
+            decoration: BoxDecoration(
+              color: PaxPaymentColors.lightGray,
+              borderRadius: BorderRadius.circular(PaxPaymentSpacing.radiusLg),
+            ),
+            child: const Icon(
+              Icons.hide_image_outlined,
+              color: PaxPaymentColors.darkGrayText,
+            ),
+          ),
+          title: Text(
+            'Hide logo',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: PaxPaymentColors.darkGrayText,
+                ),
+          ),
+          subtitle: Text(
+            'Hide the logo on the checkout screen',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: PaxPaymentColors.mediumGray,
+                ),
+          ),
+          value: _hideLogo,
+          onChanged: (value) {
+            setState(() => _hideLogo = value);
+            sl<LocalStorage>().setHideCheckoutLogo(value);
+          },
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionCard extends StatelessWidget {
