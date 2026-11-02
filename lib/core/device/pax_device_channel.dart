@@ -12,4 +12,9 @@ class PaxDeviceChannel {
   static Future<void> printText(String text) async {
     await _channel.invokeMethod<void>('printText', <String, dynamic>{'text': text});
   }
+
+  /// Closes Xe Pay without the system opening it again as the Home app.
+  static Future<void> exitApp() async {
+    await _channel.invokeMethod<void>('exitApp');
+  }
 }

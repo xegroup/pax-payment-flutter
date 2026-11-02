@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/database/local_storage.dart';
+import '../../core/device/exit_application.dart';
 import '../../core/di/injection.dart';
 import '../../core/auth/logout_confirmation.dart';
 import '../../core/security/manager_pin_gate.dart';
@@ -95,6 +96,11 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
     );
   }
 
+  Future<void> _exitApplication() async {
+    if (_isLoggingOut || _isSettling) return;
+    await confirmExitApplication(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,7 +119,7 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
           const SizedBox(height: PaxPaymentSpacing.sp16),
           _MenuTile(
             title: 'Sales overview',
-            subtitle: 'Today’s sales and performance.',
+            subtitle: 'View sales reports.',
             icon: Icons.bar_chart_rounded,
             onTap: () {
               Navigator.of(context).push(
@@ -155,7 +161,7 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _MenuTile(
             title: 'App settings',
-            subtitle: 'Password, language, and account.',
+            subtitle: 'Manager PIN, logo, and payment settings.',
             icon: Icons.settings_outlined,
             onTap: () {
               Navigator.of(context).push(
@@ -168,7 +174,7 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
           const SizedBox(height: PaxPaymentSpacing.sp10),
           _MenuTile(
             title: 'Device settings',
-            subtitle: 'Wi‑Fi, printer test, terminal IDs.',
+            subtitle: 'Wi‑Fi and terminal IDs.',
             icon: Icons.settings_suggest_rounded,
             onTap: () {
               Navigator.of(context).push(
@@ -200,6 +206,13 @@ class _TerminalMenuScreenState extends State<TerminalMenuScreen> {
                 ),
               );
             },
+          ),
+          const SizedBox(height: PaxPaymentSpacing.sp10),
+          _MenuTile(
+            title: 'Exit application',
+            subtitle: 'Close Xe Pay.',
+            icon: Icons.power_settings_new_rounded,
+            onTap: (_isLoggingOut || _isSettling) ? () {} : _exitApplication,
           ),
           const SizedBox(height: PaxPaymentSpacing.sp24),
           OutlinedButton.icon(

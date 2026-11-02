@@ -26,10 +26,34 @@ class PaymentMethodScreen extends StatefulWidget {
   State<PaymentMethodScreen> createState() => _PaymentMethodScreenState();
 }
 
-class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
+class _PaymentMethodScreenState extends State<PaymentMethodScreen>
+    with WidgetsBindingObserver {
   PaymentMethodChoice _choice = PaymentMethodChoice.card;
   bool _isProcessing = false;
+  bool _handedOffToTerminal = false;
   late final bool _cashEnabled = sl<LocalStorage>().cashEnabled;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isProcessing || _handedOffToTerminal) return;
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      setState(() => _handedOffToTerminal = true);
+    }
+  }
 
   Future<void> _onContinue() async {
     if (_isProcessing) return;
@@ -63,7 +87,10 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() => _isProcessing = false);
+        setState(() {
+          _isProcessing = false;
+          _handedOffToTerminal = false;
+        });
       }
     }
   }
@@ -79,6 +106,12 @@ class _PaymentMethodScreenState extends State<PaymentMethodScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final waitingForResult = _isProcessing && _handedOffToTerminal;
+    if (waitingForResult) {
+      return const TeyaScreenScaffold(
+        body: ColoredBox(color: TeyaColors.white),
+      );
+    }
     return TeyaScreenScaffold(
       appBar: TeyaTopBar(
         onGoBack: _isProcessing ? null : () => Navigator.of(context).pop(),

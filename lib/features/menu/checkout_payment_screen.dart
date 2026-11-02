@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/device/exit_application.dart';
 import '../../core/di/injection.dart';
 import '../../core/database/local_storage.dart';
 import '../../core/network/MyApiClient.dart';
@@ -60,7 +61,8 @@ class CheckoutPaymentScreen extends StatefulWidget {
   State<CheckoutPaymentScreen> createState() => _CheckoutPaymentScreenState();
 }
 
-class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
+class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen>
+    with WidgetsBindingObserver {
   final _money = NumberFormat.currency(locale: 'en_GB', symbol: '£');
   final _paymentService = PaymentService();
   final _customTipCtrl = TextEditingController();
@@ -79,6 +81,8 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   List<double> _basePayments = <double>[];
   int _currentPaymentIndex = 0;
   bool _isProcessing = false;
+  bool _handedOffToTerminal = false;
+  bool _exitPromptOpen = false;
   double _selectedTip = 0;
   String _paymentLogoUrl = '';
   bool _hideLogo = false;
@@ -91,6 +95,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _method = widget.initialMethod ?? CheckoutPaymentMethod.cardTap;
     _paymentLogoUrl = sl<LocalStorage>().paymentScreenLogo;
     _hideLogo = sl<LocalStorage>().hideCheckoutLogo;
@@ -120,7 +125,18 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!_isProcessing || _handedOffToTerminal) return;
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused) {
+      setState(() => _handedOffToTerminal = true);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _customTipCtrl.dispose();
     for (final c in _customSplitCtrls) {
       c.dispose();
@@ -132,23 +148,37 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
   Widget build(BuildContext context) {
     final isAmount = _step == _BillFlowStep.amount;
     final isCardPresent = _step == _BillFlowStep.cardPresent;
-    return Scaffold(
-      backgroundColor: isAmount || isCardPresent
+    final waitingForResult = _isProcessing && _handedOffToTerminal;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || _isProcessing || _exitPromptOpen) return;
+        _exitPromptOpen = true;
+        confirmExitApplication(context).whenComplete(() {
+          _exitPromptOpen = false;
+        });
+      },
+      child: Scaffold(
+      backgroundColor: waitingForResult || isAmount || isCardPresent
           ? PaxPaymentColors.white
           : PaxPaymentColors.adminBackground,
-      appBar: isCardPresent ? null : _buildCheckoutAppBar(context),
+      appBar: isCardPresent || waitingForResult
+          ? null
+          : _buildCheckoutAppBar(context),
       body: Stack(
         children: [
-          if (isAmount)
-            _buildAmountStepLayout(context)
-          else if (isCardPresent)
-            _buildCardPresentStep(context)
-          else
-            ListView(
-              padding: const EdgeInsets.all(PaxPaymentSpacing.sp16),
-              children: [_buildFlowBody(context)],
-            ),
-          if (_isProcessing)
+          if (!waitingForResult) ...[
+            if (isAmount)
+              _buildAmountStepLayout(context)
+            else if (isCardPresent)
+              _buildCardPresentStep(context)
+            else
+              ListView(
+                padding: const EdgeInsets.all(PaxPaymentSpacing.sp16),
+                children: [_buildFlowBody(context)],
+              ),
+          ],
+          if (_isProcessing && !waitingForResult)
             ColoredBox(
               color: Colors.black.withValues(alpha: 0.22),
               child: Center(
@@ -157,7 +187,10 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
                 ),
               ),
             ),
+          if (waitingForResult)
+            const ColoredBox(color: PaxPaymentColors.white),
         ],
+      ),
       ),
     );
   }
@@ -511,7 +544,10 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() => _isProcessing = false);
+        setState(() {
+          _isProcessing = false;
+          _handedOffToTerminal = false;
+        });
       }
     }
   }
@@ -1038,6 +1074,7 @@ class _CheckoutPaymentScreenState extends State<CheckoutPaymentScreen> {
     if (!mounted) return;
     setState(() {
       _isProcessing = false;
+      _handedOffToTerminal = false;
       if (tx != null) {
         _transactions.add(tx);
       }
