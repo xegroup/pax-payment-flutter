@@ -3,8 +3,11 @@ package com.xepos.pax.payment
 import android.Manifest
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.app.role.RoleManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -32,8 +35,17 @@ class MainActivity : FlutterFragmentActivity() {
     private lateinit var evoActivityLauncher: ActivityResultLauncher<Intent>
     private lateinit var storagePermissionLauncher: ActivityResultLauncher<Array<String>>
     private lateinit var allFilesAccessLauncher: ActivityResultLauncher<Intent>
+    private var resumeCount = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val openedAsHome = intent?.hasCategory(Intent.CATEGORY_HOME) == true
+        if (exitRequested && openedAsHome) {
+            super.onCreate(savedInstanceState)
+            finishAndRemoveTask()
+            return
+        }
+        exitRequested = false
+        enableHomeAlias()
         super.onCreate(savedInstanceState)
         storagePermissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions(),
@@ -64,8 +76,67 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun onResume() {
         super.onResume()
+        resumeCount += 1
         if (!logFileReady && DeviceLogFile.canWriteSharedStorage(this)) {
             createDeviceLog()
+        }
+        val storageSettingsOpening = resumeCount == 1 &&
+            !DeviceLogFile.canWriteSharedStorage(this) &&
+            !DeviceLogFile.isInDownloads(this)
+        if (storageSettingsOpening) return
+        if (needsHomeRole() && !homePromptShown) {
+            requestHomeRole()
+        } else {
+            requestOverlayPermission()
+        }
+    }
+
+    /**
+     * Android 16 does not allow a boot receiver to open an activity.
+     * The system starts the default Home app after boot instead.
+     */
+    private fun needsHomeRole(): Boolean {
+        return Build.VERSION.SDK_INT >= 35 && !isHomeRoleHeld()
+    }
+
+    private fun isHomeRoleHeld(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return false
+        val roleManager = getSystemService(RoleManager::class.java) ?: return false
+        return roleManager.isRoleAvailable(RoleManager.ROLE_HOME) &&
+            roleManager.isRoleHeld(RoleManager.ROLE_HOME)
+    }
+
+    private fun requestHomeRole() {
+        if (homePromptShown || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+        val roleManager = getSystemService(RoleManager::class.java) ?: return
+        if (!roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) return
+        if (roleManager.isRoleHeld(RoleManager.ROLE_HOME)) return
+        homePromptShown = true
+        try {
+            startActivity(roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME))
+        } catch (e: Exception) {
+            Log.w(TAG, "Home role request unavailable", e)
+        }
+    }
+
+    /**
+     * Android 10 and later will not open this activity from the boot receiver
+     * unless "Display over other apps" is allowed, or the terminal grants
+     * background activity starts.
+     */
+    private fun requestOverlayPermission() {
+        if (overlayPromptShown || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        if (Settings.canDrawOverlays(this)) return
+        overlayPromptShown = true
+        try {
+            startActivity(
+                Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName"),
+                ),
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Overlay permission screen unavailable", e)
         }
     }
 
@@ -105,11 +176,6 @@ class MainActivity : FlutterFragmentActivity() {
         DeviceLogFile.append(this, note)
         if (DeviceLogFile.isInDownloads(this)) {
             logFileReady = true
-            Toast.makeText(
-                this,
-                "Payment log saved to Downloads/evo_payment_log.txt",
-                Toast.LENGTH_LONG,
-            ).show()
         }
     }
 
@@ -246,6 +312,11 @@ class MainActivity : FlutterFragmentActivity() {
                             DeviceLogFile.append(this, text)
                         }
                         result.success(DeviceLogFile.appLogPath(this))
+                    }
+
+                    "exitApp" -> {
+                        result.success(null)
+                        exitApplication()
                     }
 
                     else -> result.notImplemented()
@@ -627,10 +698,64 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private fun enableHomeAlias() {
+        setHomeAliasEnabled(true)
+    }
+
+    private fun setHomeAliasEnabled(enabled: Boolean) {
+        val state = if (enabled) {
+            PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        } else {
+            PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        }
+        packageManager.setComponentEnabledSetting(
+            ComponentName(this, HOME_ALIAS),
+            state,
+            PackageManager.DONT_KILL_APP,
+        )
+    }
+
+    /**
+     * Closing the Home app makes Android start it again. Turn the Home
+     * entry off first, open the terminal's other launcher, then finish.
+     */
+    private fun exitApplication() {
+        exitRequested = true
+        setHomeAliasEnabled(false)
+        val others = packageManager.queryIntentActivities(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
+            PackageManager.MATCH_ALL,
+        )
+        val other = others.firstOrNull {
+            it.activityInfo.packageName != packageName
+        }
+        if (other != null) {
+            try {
+                startActivity(
+                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).apply {
+                        component = ComponentName(
+                            other.activityInfo.packageName,
+                            other.activityInfo.name,
+                        )
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    },
+                )
+            } catch (e: Exception) {
+                Log.w(TAG, "Could not open another home app", e)
+            }
+        }
+        finishAndRemoveTask()
+    }
+
     companion object {
         private const val TAG = "XePOS/MainActivity"
         private var logFileReady = false
         private var startupLogged = false
         private var storagePromptShown = false
+        private var overlayPromptShown = false
+        private var homePromptShown = false
+        private var exitRequested = false
+
+        private const val HOME_ALIAS = "com.xepos.pax.payment.Home"
     }
 }

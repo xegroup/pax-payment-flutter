@@ -12,6 +12,14 @@ void navigateToCheckout(BuildContext context) {
   ).pushAndRemoveUntil(CheckoutPaymentScreen.materialRoute(), (route) => false);
 }
 
+Route<void> _resultRoute(Widget page) {
+  return PageRouteBuilder<void>(
+    pageBuilder: (_, _, _) => page,
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
+  );
+}
+
 /// Opens success screen. When [popWithResult] is true, pops with `true` on done (split flow).
 void navigateToPaymentSuccess(
   BuildContext context, {
@@ -23,8 +31,8 @@ void navigateToPaymentSuccess(
   bool popWithResult = false,
   required EvoDataModel evo,
 }) {
-  final route = MaterialPageRoute<void>(
-    builder: (_) => PaymentSuccessScreen(
+  final route = _resultRoute(
+    PaymentSuccessScreen(
       amount: amount,
       cardLast4: cardLast4,
       cardType: cardType,
@@ -32,7 +40,6 @@ void navigateToPaymentSuccess(
       timestamp: timestamp.toString(),
       popWithResult: popWithResult,
       evo: evo,
-
     ),
   );
   if (popWithResult) {
@@ -52,8 +59,8 @@ void navigateToPaymentDeclined(
   bool popWithResult = false,
   required EvoDataModel evo
 }) {
-  final route = MaterialPageRoute<void>(
-    builder: (_) => PaymentDeclinedScreen(
+  final route = _resultRoute(
+    PaymentDeclinedScreen(
       amount: amount,
       declineReason: declineReason,
       popWithResult: popWithResult,

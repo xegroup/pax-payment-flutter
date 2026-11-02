@@ -92,17 +92,15 @@ class PaymentService {
         (key, value) => MapEntry(key.toString(), value),
       );
 
-      // Reliable save path: Flutter calls API after native returns EVO payload.
-      await saveEvoPaymentResult(
-        result,
-        amountCents: amount,
-      );
+      // Save after the result screen is shown. Waiting here kept
+      // "Present card and authorize" on screen after the terminal returned.
+      unawaited(saveEvoPaymentResult(result, amountCents: amount));
 
       return result;
     } on PlatformException catch (e) {
       if (e.code == 'PAYMENT_FAILED' && e.details is Map) {
         final details = Map<String, dynamic>.from(e.details as Map);
-        await saveEvoPaymentResult(details, amountCents: amount);
+        unawaited(saveEvoPaymentResult(details, amountCents: amount));
       }
       if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {
         throw PaymentServiceException(
@@ -184,22 +182,26 @@ class PaymentService {
       }
       final result = rawResult.map((key, value) => MapEntry(key.toString(), value));
 
-      await saveEvoPaymentResult(
-        result,
-        amountCents: amount,
-        isRefund: true,
-        originalTransactionId: originalTransactionId,
+      unawaited(
+        saveEvoPaymentResult(
+          result,
+          amountCents: amount,
+          isRefund: true,
+          originalTransactionId: originalTransactionId,
+        ),
       );
 
       return result;
     } on PlatformException catch (e) {
       if (e.code == 'PAYMENT_FAILED' && e.details is Map) {
         final details = Map<String, dynamic>.from(e.details as Map);
-        await saveEvoPaymentResult(
-          details,
-          amountCents: amount,
-          isRefund: true,
-          originalTransactionId: originalTransactionId,
+        unawaited(
+          saveEvoPaymentResult(
+            details,
+            amountCents: amount,
+            isRefund: true,
+            originalTransactionId: originalTransactionId,
+          ),
         );
       }
       if (e.code == 'IOS_PAYMENT_NOT_SUPPORTED') {
