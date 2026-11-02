@@ -35,16 +35,19 @@ String parseCardType(Map<String, dynamic> result) {
 }
 
 PaymentStatus? parsePaymentStatus(Map<String, dynamic> result) {
-  final statusValue = (result['status'] ?? '').toString().toLowerCase();
+  final statusValue = _readStatusCode(result['result']);
   return switch (statusValue) {
-    'success' ||
-    'approved' ||
-    'ok' ||
-    'completed' ||
-    'true' => PaymentStatus.success,
-    'cancelled' || 'canceled' => null,
+    0 => PaymentStatus.success,
+    7 => null,
+    1 || 2 => PaymentStatus.failed,
     _ => PaymentStatus.failed,
   };
+}
+
+int _readStatusCode(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString().trim() ?? '') ?? -1;
 }
 
 String parseDeclineReason(Map<String, dynamic> result) {
@@ -85,9 +88,9 @@ String? parseTransactionCurrency(Map<String, dynamic> result) {
 }
 
 int? parseResult(Map<String, dynamic> result) {
-  final resultParsed = result['result']?.trim();
-  if (resultParsed != null && resultParsed.isNotEmpty) return resultParsed;
-  return null;
+  final raw = result['result'];
+  if (raw == null) return null;
+  return _readStatusCode(raw);
 }
 
 String? parseAuthorizationMessage(Map<String, dynamic> result) {

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pax_payment/features/transaction/data/evo_data_model.dart';
 
-import '../core/di/injection.dart';
-import '../core/database/local_storage.dart';
 import '../features/menu/models/payment_transaction.dart';
 import '../services/printer_service.dart';
 import '../shared/theme/pax_text_styles.dart';
@@ -35,12 +33,6 @@ class PaymentSuccessScreen extends StatefulWidget {
 }
 
 class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoPrint());
-  }
-
   PaymentTransaction get _transaction =>
       PaymentTransaction(
           id: widget.transactionId,
@@ -54,12 +46,6 @@ class _PaymentSuccessScreenState extends State<PaymentSuccessScreen> {
           evoTransactionRef: widget.transactionId,
           evo: widget.evo
       );
-
-  Future<void> _maybeAutoPrint() async {
-    if (!sl<LocalStorage>().autoPrintReceipt) return;
-    if (!mounted) return;
-    await PrinterService.printReceipt(context, _transaction);
-  }
 
   String get _cardLine {
     final type = widget.cardType
